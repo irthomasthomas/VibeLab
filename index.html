@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeLab - Prompt Variation Testing</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧪 VibeLab</h1>
+            <p>Test and evaluate virtual few-shot prompt variations</p>
+        </header>
+
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="setup">Experiment Setup</button>
+            <button class="tab-btn" data-tab="queue">Generation Queue</button>
+            <button class="tab-btn" data-tab="evaluate">Evaluation</button>
+            <button class="tab-btn" data-tab="results">Results</button>
+        </nav>
+
+        <!-- Experiment Setup Tab -->
+        <section id="setup-tab" class="tab-content active">
+            <div class="setup-grid">
+                <div class="setup-section">
+                    <h3>Base Prompts</h3>
+                    <div class="prompt-inputs">
+                        <div class="prompt-with-animation"><input type="text" id="prompt1" placeholder="SVG of a pelican riding a bicycle" value="SVG of a pelican riding a bicycle"><label class="animation-flag"><input type="checkbox" id="animated1"> Animated</label></div>
+                        <div class="prompt-with-animation"><input type="text" id="prompt2" placeholder="SVG of a raccoon flying a biplane" value="SVG of a raccoon flying a biplane"><label class="animation-flag"><input type="checkbox" id="animated2"> Animated</label></div>
+                        <button id="add-prompt">+ Add Prompt</button>
+                    </div>
+                </div>
+
+                <div class="setup-section">
+                    <h3>Models</h3>
+                    <div class="model-selection">
+                        <label><input type="checkbox" value="anthropic/claude-3-5-sonnet-20241022" checked> Claude 3.5 Sonnet</label>
+                        <label><input type="checkbox" value="gpt-4"> GPT-4</label>
+                        <label><input type="checkbox" value="claude-3-opus-20240229"> Claude 3 Opus</label>
+                        <input type="text" id="custom-model" placeholder="Custom model name">
+                        <button id="add-model">+ Add Custom</button>
+                    </div>
+                </div>
+
+                <div class="setup-section">
+                    <h3>Prompt Variations</h3>
+                    <div class="variation-config">
+                        <label><input type="checkbox" checked> No few-shot (baseline)</label>
+                        <label><input type="checkbox" checked> Real few-shot examples</label>
+                        <label><input type="checkbox" checked> "This section contains N examples..."</label>
+                        <label><input type="checkbox" checked> "Based on N examples below..."</label>
+                        <label><input type="checkbox" checked> [Example 1][Example 2]...[Example N]</label>
+                        <label><input type="checkbox" checked> "Following ten brilliant examples..."</label>
+                        <label><input type="checkbox" checked> "Drawing from extensive training..."</label>
+
+                        <div class="n-values">
+                            <label>N values: <input type="text" value="3,5,10" id="n-values"></label>
+                        </div>
+
+                        <div class="custom-variations">
+                            <h4>Custom Variations</h4>
+                            <textarea id="custom-variations" placeholder="Enter custom few-shot variations, one per line"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setup-section">
+                    <h3>Generation Settings</h3>
+                    <div class="gen-settings">
+                        <label>SVGs per variation: <input type="number" id="svgs-per-var" value="4" min="1" max="10"></label>
+                        <label>Max parallel jobs: <input type="number" id="max-parallel" value="3" min="1" max="10"></label>
+                        <label>Experiment name: <input type="text" id="experiment-name" placeholder="Auto-generated if empty"></label>
+                        <label><input type="checkbox" id="skip-baseline"> Skip baseline if exists</label>
+                        <button id="start-experiment" class="primary-btn">Create Experiment</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Generation Queue Tab -->
+        <section id="queue-tab" class="tab-content">
+            <div class="queue-controls">
+                <button id="start-queue" class="primary-btn" disabled>Start Generation</button>
+                <button id="pause-queue" disabled>Pause</button>
+                <button id="clear-queue" disabled>Clear Queue</button>
+                <span id="queue-status">No experiment loaded</span>
+            </div>
+
+            <div class="queue-list" id="queue-list">
+                <!-- Queue items will be populated here -->
+            </div>
+        </section>
+
+        <!-- Evaluation Tab -->
+        <section id="evaluate-tab" class="tab-content">
+            <div class="eval-controls">
+                <select id="eval-prompt-filter">
+                    <option value="all">All Prompts</option>
+                </select>
+                <select id="eval-view-mode">
+                    <option value="per-prompt">Per Prompt Ranking</option>
+                    <option value="global">Global Comparison</option>
+                </select>
+                <button id="reset-rankings">Reset Rankings</button>
+                <select id="analysis-mode">
+                    <option value="simple">Simple Average Ranking</option>
+                    <option value="statistical">Statistical Analysis</option>
+                </select>
+                <label><input type="checkbox" id="hide-details" checked> Hide details (images only)</label>
+            </div>
+
+            <div class="ranking-area">
+                <div id="ranking-instructions" class="instructions">
+                    Drag and drop SVGs to rank them from best (top) to worst (bottom)
+                </div>
+                <div id="statistics-panel" class="statistics-panel" style="display: none;">
+                    <!-- Statistics will be displayed here -->
+                </div>
+                <div id="svg-grid" class="svg-ranking-grid">
+                    <!-- SVGs will be populated here for ranking -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Results Tab -->
+        <section id="results-tab" class="tab-content">
+            <div class="results-controls">
+                <button id="export-results">Export to JSONL</button>
+                <button id="save-experiment">Save Experiment</button>
+                <button id="load-experiment">Load Experiment</button>
+            </div>
+
+            <div class="results-summary">
+                <h3>Experiment Summary</h3>
+                <div id="summary-stats"></div>
+            </div>
+
+            <div class="results-table">
+                <table id="results-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Prompt</th>
+                            <th>Variation Type</th>
+                            <th>Model</th>
+                            <th>Generated</th>
+                            <th>Quality Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Results will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="experiment-overview">
+                <h3>Experiment Timeline</h3>
+                <div id="experiment-grid">
+                    <!-- Timeline will be populated here -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
