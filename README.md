@@ -1,68 +1,165 @@
-# VibeLab 🧪
+# 🧪 VibeLab - Visual Baseline Evaluation Laboratory
 
-A web-based tool for testing and evaluating virtual few-shot prompt variations with SVG generation.
+## Scientific Prompt Evaluation Framework
 
-## Features
+VibeLab is a comprehensive tool for evaluating prompt-engineering strategies with advanced statistical analysis, database persistence, and modern UI/UX.
 
-- **Experiment Setup**: Configure base prompts, models, and prompt variations
-- **Queue Management**: Batch generation with progress tracking, pause/resume functionality
-- **Visual Evaluation**: Drag-and-drop ranking interface for human quality assessment
-- **Results Analysis**: Comprehensive results table with quality scoring
-- **Data Export**: Export results to JSONL format for further analysis
+### 🚀 Quick Start
 
-## Prompt Variations Tested
+1. **Start the application:**
+   ```bash
+   ./start.sh
+   ```
 
-1. **Baseline**: No few-shot examples
-2. **Real Few-shot**: Actual examples provided
-3. **Simulated Variations**:
-   - "This section contains N examples..."
-   - "Based on N examples below..."
-   - "[Example 1][Example 2]...[Example N]" placeholders
-   - "Following ten brilliant examples..."
-   - "Drawing from extensive training examples..."
-4. **Custom Variations**: User-defined prompt modifications
+2. **Open in browser:**
+   Navigate to `http://localhost:8081`
 
-## Usage
+3. **Migrate existing data:**
+   If you have existing VibeLab data, open `migration.html` in your browser first.
 
-1. **Setup**: Define your base prompts (e.g., "SVG of a pelican riding a bicycle")
-2. **Configure**: Select models and prompt variations to test
-3. **Generate**: Run the generation queue to create SVGs
-4. **Evaluate**: Use drag-and-drop to rank SVG quality
-5. **Analyze**: Review results and export data
+### ✨ New Features
 
-## Technical Details
+#### 🗄️ Database Persistence
+- SQLite database for reliable data storage
+- No more localStorage limitations
+- Automatic backup and recovery
 
-- **Frontend**: HTML/CSS/JavaScript single-page application
-- **LLM Integration**: Uses `llm` CLI for model interactions
-- **Storage**: Browser localStorage for experiments, JSONL export for results
-- **Models Supported**: Claude, GPT-4, and custom model configurations
+#### 📊 Advanced Analytics
+- Statistical significance testing
+- Confidence intervals and effect sizes
+- Performance comparison across strategies
+- Automated insights and recommendations
 
-## File Structure
+#### 🎯 Enhanced Prompt Strategies
+- Modular strategy framework
+- Pipeline support for chaining strategies
+- Custom strategy creation tools
+- Strategy templates and sharing
 
-```
-VibeLab/
-├── index.html      # Main application structure
-├── style.css       # Styling and responsive design
-├── app.js          # Core application logic
-└── README.md       # This file
-```
+#### 🖥️ Improved UI/UX
+- Modern, responsive design
+- Carousel evaluation mode
+- Comparison mode for side-by-side analysis
+- Keyboard shortcuts and batch operations
+- Real-time progress tracking
 
-## Getting Started
+#### 🤖 LLM Integration
+- Direct LLM Python API integration
+- Better error handling and timeouts
+- Multi-model collaboration support
+- Enhanced generation tracking
 
-1. Open `index.html` in a modern web browser
-2. Ensure `llm` CLI is installed and configured on your system
-3. Create a new experiment in the Setup tab
-4. Generate SVGs in the Queue tab
-5. Evaluate results in the Evaluation tab
+### 🛠️ Technical Architecture
 
-## Future Enhancements
+- **Backend:** Flask with SQLAlchemy ORM
+- **Database:** SQLite for development, easily upgradeable
+- **Frontend:** Modern vanilla JavaScript with async/await
+- **LLM Integration:** Direct Python API calls
+- **Analytics:** NumPy and SciPy for statistical analysis
 
-- Real-time LLM CLI integration
-- Advanced statistical analysis
-- Batch experiment comparison
-- More sophisticated ranking algorithms
-- Integration with existing SVG viewer tools
+### 📋 Requirements
 
----
+- Python 3.8+
+- Flask and extensions
+- LLM Python library
+- NumPy, SciPy, Pandas
+- Modern web browser
 
-**Note**: This is currently a prototype. The LLM integration uses placeholder generation for testing purposes. Full integration with the `llm` CLI requires additional backend implementation.
+### 🔧 Development
+
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Run backend manually:**
+   ```bash
+   cd backend
+   python app.py
+   ```
+
+3. **Access API documentation:**
+   - Health check: `GET /api/health`
+   - List models: `GET /api/models`
+   - Create experiment: `POST /api/experiments`
+
+### 📊 API Endpoints
+
+- `GET /api/health` - Health check
+- `GET /api/models` - List available LLM models
+- `GET /api/strategies` - List prompt strategies
+- `POST /api/experiments` - Create new experiment
+- `GET /api/experiments/{id}` - Get experiment details
+- `POST /api/generate` - Generate content with LLM
+- `POST /api/experiments/{id}/rankings` - Update rankings
+- `GET /api/experiments/{id}/analysis` - Get statistical analysis
+- `GET /api/experiments/{id}/export` - Export experiment data
+
+### 🎯 Usage Guide
+
+#### Creating Experiments
+1. Navigate to "Experiment Setup" tab
+2. Enter your base prompts
+3. Select models to test
+4. Choose prompt strategies
+5. Configure generation settings
+6. Click "Create Experiment"
+
+#### Running Generation
+1. Go to "Generation Queue" tab
+2. Review the generated tasks
+3. Click "Start Generation"
+4. Monitor progress in real-time
+
+#### Evaluating Results
+1. Switch to "Evaluation" tab
+2. Drag and drop SVGs to rank them
+3. Use carousel mode for detailed review
+4. Rankings are saved automatically
+
+#### Analyzing Performance
+1. Open "Analysis" tab
+2. Select analysis type and filters
+3. Generate comprehensive reports
+4. Export analysis data
+
+#### Managing Results
+1. Visit "Results" tab
+2. View detailed experiment summary
+3. Search and filter results
+4. Export data in JSONL format
+
+### 🔄 Migration from Original VibeLab
+
+1. Open `migration.html` in your browser
+2. Click "Start Migration" to export your data
+3. The exported JSON file contains all your experiments
+4. Import data through the enhanced interface
+
+### 🐛 Troubleshooting
+
+**Database Issues:**
+- Delete `vibelab.db` and restart to reset database
+- Check file permissions in the project directory
+
+**LLM Connection Issues:**
+- Verify LLM CLI is installed: `llm --version`
+- Check model availability: `llm models list`
+- Ensure API keys are configured
+
+**Browser Issues:**
+- Clear browser cache and localStorage
+- Use a modern browser (Chrome, Firefox, Safari, Edge)
+- Check browser console for JavaScript errors
+
+### 🤝 Contributing
+
+VibeLab Enhanced is designed for the AI research community. Contributions welcome!
+
+### 📄 License
+
+MIT License - feel free to use and modify for research purposes.
+
+### 🙏 Acknowledgments
+
+Built on the foundation of the original VibeLab, enhanced for serious AI research.

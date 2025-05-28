@@ -1,0 +1,859 @@
+// VibeLab Enhanced - Main Application Logic
+
+class VibeLabEnhanced {
+    constructor() {
+        this.currentExperiment = null;
+        this.generationQueue = [];
+        this.isGenerating = false;
+        this.results = [];
+        this.rankings = {};
+        this.carouselItems = [];
+        this.carouselIndex = 0;
+
+        // Initialize everything
+        this.initializeEventListeners();
+        this.loadSavedExperiments();
+        this.loadModels();
+        this.loadBuiltinStrategies();
+        this.loadExperimentList();
+    }
+
+    initializeEventListeners() {
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                this.switchTab(tab);
+            });
+        });
+
+        // Header controls
+        document.getElementById('create-new-experiment')?.addEventListener('click', () => this.createNewExperiment());
+        document.getElementById('load-experiment-select')?.addEventListener('change', (e) => this.loadSelectedExperiment(e.target.value));
+
+        // Setup tab events
+        document.getElementById('add-prompt')?.addEventListener('click', () => this.addPromptInput());
+        document.getElementById('add-model')?.addEventListener('click', () => this.addCustomModel());
+        document.getElementById('add-custom-strategies')?.addEventListener('click', () => this.addCustomStrategies());
+        document.getElementById('start-experiment')?.addEventListener('click', () => this.createExperiment());
+
+        // Queue tab events
+        document.getElementById('start-queue')?.addEventListener('click', () => this.startGeneration());
+        document.getElementById('pause-queue')?.addEventListener('click', () => this.pauseGeneration());
+        document.getElementById('clear-queue')?.addEventListener('click', () => this.clearQueue());
+
+        // Evaluation tab events
+        document.getElementById('eval-prompt-filter')?.addEventListener('change', () => this.updateEvaluationView());
+        document.getElementById('eval-view-mode')?.addEventListener('change', () => this.updateEvaluationView());
+        document.getElementById('reset-rankings')?.addEventListener('click', () => this.resetRankings());
+        document.getElementById('hide-details')?.addEventListener('change', () => this.updateEvaluationView());
+        document.getElementById('auto-rank')?.addEventListener('click', () => this.autoRank());
+
+        // Carousel controls
+        document.getElementById('carousel-prev')?.addEventListener('click', () => this.carouselPrevious());
+        document.getElementById('carousel-next')?.addEventListener('click', () => this.carouselNext());
+        document.getElementById('carousel-rating')?.addEventListener('input', (e) => this.updateCarouselRating(e.target.value));
+
+        // Analysis tab events
+        document.getElementById('analysis-prompt-filter')?.addEventListener('change', () => this.updateAnalysis());
+        document.getElementById('analysis-type')?.addEventListener('change', () => this.updateAnalysis());
+        document.getElementById('generate-report')?.addEventListener('click', () => this.generateReport());
+        document.getElementById('export-analysis')?.addEventListener('click', () => this.exportAnalysis());
+
+        // Results tab events
+        document.getElementById('export-results')?.addEventListener('click', () => this.exportResults());
+        document.getElementById('save-experiment')?.addEventListener('click', () => this.saveExperiment());
+        document.getElementById('duplicate-experiment')?.addEventListener('click', () => this.duplicateExperiment());
+        document.getElementById('delete-experiment')?.addEventListener('click', () => this.deleteExperiment());
+        document.getElementById('results-search')?.addEventListener('input', () => this.updateResultsTable()); // Uses updateResultsTable for re-render
+        document.getElementById('results-sort')?.addEventListener('change', () => this.updateResultsTable()); // Uses updateResultsTable for re-render
+        document.getElementById('results-view')?.addEventListener('change', () => this.changeResultsView());
+
+        // Modal events
+        document.getElementById('modal-close')?.addEventListener('click', () => this.hideModal());
+        document.getElementById('modal-cancel')?.addEventListener('click', () => this.hideModal());
+        // No modal-confirm by default, will be overridden by showModal if needed
+    }
+
+    switchTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        const targetBtn = document.querySelector(`[data-tab="${tabName}"]`);
+        if (targetBtn) targetBtn.classList.add('active');
+
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        const targetTab = document.getElementById(`${tabName}-tab`);
+        if (targetTab) targetTab.classList.add('active');
+
+        // Update content based on tab
+        switch(tabName) {
+            case 'evaluate':
+                this.updateEvaluationView();
+                break;
+            case 'analysis':
+                this.updateAnalysis();
+                break;
+            case 'results':
+                this.updateResultsTable();
+                break;
+            case 'queue':
+                // No specific update logic here, updateQueueDisplay is called elsewhere
+                break;
+        }
+    }
+
+    addPromptInput() {
+        const container = document.querySelector('.prompt-inputs');
+        const promptCount = container.querySelectorAll('input[type="text"]').length + 1;
+
+        const promptDiv = document.createElement('div');
+        promptDiv.className = 'prompt-with-animation';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Enter your prompt...';
+
+        const label = document.createElement('label');
+        label.className = 'animation-flag';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `animated${promptCount}`;
+
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(' Animated'));
+
+        promptDiv.appendChild(input);
+        promptDiv.appendChild(label);
+
+        container.insertBefore(promptDiv, document.getElementById('add-prompt'));
+    }
+
+    addCustomModel() {
+        const customInput = document.getElementById('custom-model');
+        if (!customInput) {
+            console.warn('Element #custom-model not found.');
+            return;
+        }
+        const modelName = customInput.value.trim();
+        if (!modelName) {
+            this.showMessage("Please enter a model name.", "warning");
+            return;
+        }
+
+        const modelList = document.getElementById('model-list');
+        if (!modelList) {
+            console.warn('Element #model-list not found.');
+            return;
+        }
+
+        const label = document.createElement('label');
+        label.className = 'model-option';
+        label.innerHTML = `<input type="checkbox" value="${modelName}" checked> <span class="model-name">${modelName}</span> <small class="model-desc">Custom model</small>`;
+        modelList.appendChild(label);
+        customInput.value = '';
+        this.showMessage(`Added custom model: ${modelName}`, 'info');
+    }
+
+    createExperiment() {
+        const prompts = this.getPrompts();
+        const models = this.getSelectedModels();
+        const variations = this.getPromptVariations();
+
+        const svgsPerVarInput = document.getElementById("svgs-per-var");
+        const skipBaselineCheckbox = document.getElementById("skip-baseline");
+        const experimentNameInput = document.getElementById("experiment-name");
+        const experimentDescriptionInput = document.getElementById("experiment-description");
+
+        if (!svgsPerVarInput || !skipBaselineCheckbox || !experimentNameInput || !experimentDescriptionInput) {
+            console.error("Missing one or more required setup elements (svgs-per-var, skip-baseline, experiment-name, experiment-description).");
+            this.showMessage("Configuration error: Missing setup elements.", "error");
+            return;
+        }
+
+        const svgsPerVar = parseInt(svgsPerVarInput.value) || 4;
+        const skipBaseline = skipBaselineCheckbox.checked;
+        let experimentName = experimentNameInput.value.trim() || `Experiment_${new Date().toISOString().slice(0,19).replace(/:/g,"-")}`;
+        const experimentDescription = experimentDescriptionInput.value.trim();
+
+        if (prompts.length === 0) {
+            this.showMessage("Please enter at least one base prompt.", "warning");
+            return;
+        }
+
+        if (models.length === 0) {
+            this.showMessage("Please select at least one model.", "warning");
+            return;
+        }
+
+        if (variations.length === 0) {
+            this.showMessage("Please select or define at least one prompt strategy/variation.", "warning");
+            return;
+        }
+
+        this.currentExperiment = {
+            name: experimentName,
+            description: experimentDescription,
+            created: new Date().toISOString(),
+            skipBaseline: skipBaseline,
+            prompts,
+            models,
+            variations,
+            svgsPerVar,
+            results: []
+        };
+
+        this.generateQueue();
+        this.switchTab("queue");
+
+        document.getElementById("queue-status").textContent =
+            `Experiment "${experimentName}" created with ${this.generationQueue.length} tasks`;
+        const currentExperimentNameDisplay = document.getElementById("current-experiment-name");
+        if(currentExperimentNameDisplay) currentExperimentNameDisplay.textContent = experimentName;
+        this.showMessage(`Experiment "${experimentName}" created.`, "success");
+    }
+
+    getPrompts() {
+        const promptInputs = document.querySelectorAll('.prompt-inputs input[type="text"]');
+        const prompts = [];
+
+        promptInputs.forEach((input, index) => {
+            const value = input.value.trim();
+            if (value.length > 0) {
+                const animatedCheckbox = document.getElementById(`animated${index + 1}`);
+                prompts.push({
+                    text: value,
+                    animated: animatedCheckbox ? animatedCheckbox.checked : false
+                });
+            }
+        });
+
+        return prompts;
+    }
+
+    getSelectedModels() {
+        const checkboxes = document.querySelectorAll('.model-selection input[type="checkbox"]:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+    getPromptVariations() {
+        const variations = [];
+        const checkboxes = document.querySelectorAll('.variation-config input[type="checkbox"]:checked');
+        const nValuesInput = document.getElementById('n-values');
+        const customStrategiesInput = document.getElementById('custom-strategies');
+        
+        if (!nValuesInput) {
+            console.warn('n-values element not found.');
+            // Default to minimal n for safety if element is missing.
+            nValues = [3];
+        } else {
+            nValues = nValuesInput.value.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n > 0);
+            if (nValues.length === 0) nValues = [3]; // Default if input is empty/invalid
+        }
+        
+        if (!customStrategiesInput) {
+            console.warn('custom-strategies element not found.');
+            // Default to empty for safety if element is missing.
+            customVariations = [];
+        } else {
+            customVariations = customStrategiesInput.value
+                .split('\n')
+                .map(v => v.trim())
+                .filter(v => v.length > 0);
+        }
+
+        checkboxes.forEach(cb => {
+            const value = cb.value; // Use checkbox value directly
+
+            if (value === 'baseline') {
+                variations.push({ type: 'baseline', template: '{prompt}' });
+            } else if (value === 'real-fewvibe') {
+                variations.push({ type: 'real-fewvibe', template: 'Here are some examples:\n[REAL_EXAMPLES]\n\nNow create: {prompt}' });
+            } else if (value === 'simulated-section') {
+                nValues.forEach(n => {
+                    variations.push({
+                        type: 'simulated-section',
+                        n: n,
+                        template: `This section contains ${n} few-shot examples to guide your response.\n\n{prompt}`
+                    });
+                });
+            } else if (value === 'simulated-based') {
+                nValues.forEach(n => {
+                    variations.push({
+                        type: 'simulated-based',
+                        n: n,
+                        template: `Based on ${n} examples below, generate an SVG:\n\n{prompt}`
+                    });
+                });
+            } else if (value === 'simulated-placeholders') {
+                nValues.forEach(n => {
+                    const placeholders = Array.from({length: n}, (_, i) => `[Few-shot example ${i+1}]`).join('\n');
+                    variations.push({
+                        type: 'simulated-placeholders',
+                        n: n,
+                        template: `${placeholders}\n\n{prompt}`
+                    });
+                });
+            } else if (value === 'simulated-brilliant') {
+                variations.push({ type: 'simulated-brilliant', template: 'Following the pattern of ten brilliant examples of SVG generation...\n\n{prompt}' });
+            } else if (value === 'simulated-extensive') {
+                variations.push({ type: 'simulated-extensive', template: 'Drawing from extensive training examples, create:\n\n{prompt}' });
+            }
+        });
+
+        // Add custom variations
+        customVariations.forEach((variation, index) => {
+            variations.push({
+                type: 'custom',
+                index: index + 1,
+                template: `${variation}\n\n{prompt}`
+            });
+        });
+        
+        let nValues, customVariations; // Declare using let
+        return variations;
+    }
+
+    generateQueue() {
+        this.generationQueue = [];
+        const { prompts, models, variations, svgsPerVar, skipBaseline } = this.currentExperiment;
+
+        prompts.forEach(promptObj => {
+            models.forEach(model => {
+                variations.forEach(variation => {
+                    // Skip baseline variations if requested and it's the baseline type
+                    if (skipBaseline && variation.type === 'baseline') return;
+
+                    for (let i = 0; i < svgsPerVar; i++) {
+                        this.generationQueue.push({
+                            id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            prompt: promptObj.text,
+                            animated: promptObj.animated,
+                            model,
+                            variation,
+                            instance: i + 1,
+                            status: 'pending',
+                            progress: 0,
+                            result: null,
+                            error: null
+                        });
+                    }
+                });
+            });
+        });
+
+        this.updateQueueDisplay();
+        document.getElementById('start-queue').disabled = false;
+        this.showMessage(`Queue generated with ${this.generationQueue.length} tasks.`, "info");
+    }
+
+    async startGeneration() {
+        console.log("DEBUG: Starting generation method called");
+        const startTimeDebug = Date.now();
+        const maxGenerationTime = 5 * 60 * 1000; // 5 minute timeout
+        if (this.isGenerating) return;
+
+        this.isGenerating = true;
+        this.showLoading('Starting generation queue...');
+        document.getElementById('start-queue').disabled = true;
+        document.getElementById('pause-queue').disabled = false;
+        document.getElementById('clear-queue').disabled = false;
+
+        const maxParallel = parseInt(document.getElementById('max-parallel')?.value) || 3;
+
+        try {
+            while (this.isGenerating) {
+                // Safety timeout check
+                if (Date.now() - startTimeDebug > maxGenerationTime) {
+                    console.warn("Generation timeout reached, forcing stop...");
+                    this.isGenerating = false;
+                    this.showMessage("Generation timeout reached after 5 minutes", "warning");
+                    break;
+                }
+                const pendingItems = this.generationQueue.filter(item => item.status === 'pending');
+                if (pendingItems.length === 0) {
+                    break; /* All pending tasks processed */
+                }
+
+                const runningItems = this.generationQueue.filter(item => item.status === 'running');
+                if (runningItems.length >= maxParallel) {
+                    await new Promise(resolve => setTimeout(resolve, 500)); /* Wait for slots to free up */
+                    continue;
+                }
+
+                const availableSlots = maxParallel - runningItems.length;
+                const batch = pendingItems.slice(0, availableSlots);
+
+                if (batch.length === 0) {
+                    await new Promise(resolve => setTimeout(resolve, 500)); 
+                    continue;
+                }
+                
+                const promises = batch.map(item => this.generateSVG(item).catch(error => {
+                    console.error('Critical Generation Error for item:', item.id, error);
+                    item.status = 'failed'; /* Mark as failed if an error occurs */
+                    item.error = error.message;
+                    this.showMessage(`Generation failed for ${item.prompt.substring(0,20)}...`, "error");
+                }));
+
+                await Promise.all(promises);
+                this.updateQueueDisplay();
+                
+                // Important: Update the list of pending items after a batch to capture new states
+                // Small delay to allow any remaining promises to potentially resolve and update state
+                // which might affect the next iteration's pendingItems count.
+                await new Promise(resolve => setTimeout(resolve, 50)); 
+            }
+        } finally {
+            /* Ensure cleanup regardless of how the loop exits */
+            this.isGenerating = false;
+            document.getElementById('start-queue').disabled = true;
+            document.getElementById('pause-queue').disabled = true; 
+            document.getElementById('clear-queue').disabled = false;
+            this.hideLoading();
+            this.showMessage("Generation complete!", "success");
+            this.updateResultsTable(); // Final results table update
+            this.switchTab(document.querySelector('.tab-nav .active')?.dataset.tab || 'queue'); // Stay on current tab or go to queue
+        }
+    }
+
+    async generateSVG(queueItem) {
+        const startTime = Date.now();
+        queueItem.status = 'running';
+        queueItem.progress = 10;
+        this.updateQueueDisplay();
+
+        const fullPrompt = queueItem.variation.template.replace('{prompt}', queueItem.prompt);
+
+        queueItem.progress = 30;
+        this.updateQueueDisplay();
+
+        try {
+            const result = await this.executeLLMCommand(queueItem.model, fullPrompt);
+            queueItem.progress = 90;
+            this.updateQueueDisplay();
+
+            const svgContent = this.extractSVG(result);
+            if (svgContent) {
+                queueItem.result = {
+                    fullResponse: result,
+                    svgContent: svgContent,
+                    timestamp: new Date().toISOString(),
+                    processingTime: Date.now() - startTime
+                };
+                queueItem.status = 'completed';
+                queueItem.progress = 100;
+
+                this.currentExperiment.results.push({
+                    id: queueItem.id,
+                    prompt: queueItem.prompt,
+                    animated: queueItem.animated,
+                    model: queueItem.model,
+                    variation: queueItem.variation,
+                    svgContent: svgContent,
+                    timestamp: queueItem.result.timestamp,
+                    processingTime: queueItem.result.processingTime,
+                    rank: null
+                });
+            } else {
+                throw new Error('No valid SVG found in response');
+            }
+        } catch (error) {
+            console.error('LLM generation error for item:', queueItem.id, error);
+            queueItem.status = 'failed';
+            queueItem.error = error.message;
+            queueItem.progress = 0;
+            this.showMessage(`Failed to generate ${queueItem.prompt.substring(0,20)}...`, "error");
+            throw error; // Re-throw to be caught by Promise.all in startGeneration
+        }
+    }
+
+    async executeLLMCommand(model, prompt) {
+        try {
+            const response = await fetch('http://localhost:8081/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: model,
+                    prompt: prompt,
+                    experiment_id: this.currentExperiment?.name || 'default',
+                    request_id: `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+                })
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, body: ${errorBody}`);
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Unknown error from LLM backend.');
+            }
+
+            return data.result;
+
+        } catch (error) {
+            console.error('LLM API call failed:', error);
+            throw new Error(`Connection or API error for model ${model}: ${error.message}`);
+        }
+    }
+
+    extractSVG(text) {
+        const svgMatch = text?.match(/<svg[\s\S]*?<\/svg>/i); // Use optional chaining for 'text'
+        return svgMatch ? svgMatch[0] : null;
+    }
+
+    pauseGeneration() {
+        this.isGenerating = false;
+        this.hideLoading(); // Immediately hide loading when paused
+        document.getElementById('start-queue').disabled = false;
+        document.getElementById('pause-queue').disabled = true;
+        document.getElementById('clear-queue').disabled = false;
+        document.getElementById('queue-status').textContent = 'Paused';
+        this.showMessage('Generation paused.', 'info');
+    }
+
+    clearQueue() {
+        if (!confirm('Are you sure you want to clear the generation queue?')) return;
+        this.generationQueue = [];
+        this.isGenerating = false;
+        this.updateQueueDisplay();
+        document.getElementById('start-queue').disabled = true;
+        document.getElementById('clear-queue').disabled = true; // Also disable pause if queue is clear
+        this.showMessage('Generation queue cleared.', 'info');
+    }
+
+    getSavedExperiments() {
+        const experiments = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key?.startsWith('vibelab_')) { // Use optional chaining for 'key'
+                try {
+                    const data = JSON.parse(localStorage.getItem(key));
+                    experiments.push({ name: data.name, created: data.created || new Date().toISOString() });
+                } catch (e) {
+                    console.error('Error parsing saved experiment from localStorage:', e);
+                }
+            }
+        }
+        return experiments.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+    }
+
+    loadSavedExperiments() {
+        const experiences = this.getSavedExperiments();
+        console.log('Loaded saved experiments from localStorage:', experiences);
+    }
+
+    // ===== MATHEMATICAL FUNCTIONS =====
+    calculateMean(values) {
+        if (!values || values.length === 0) return 0;
+        return values.reduce((sum, val) => sum + val, 0) / values.length;
+    }
+
+    calculateMedian(values) {
+        if (!values || values.length === 0) return 0;
+        const sorted = [...values].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+
+    calculateStdDev(values) {
+        if (!values || values.length < 2) return 0; // StdDev not meaningful for <2 values
+        const mean = this.calculateMean(values);
+        const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (values.length - 1); // Use n-1 for sample stddev
+        return Math.sqrt(variance);
+    }
+
+    calculateConfidenceInterval(values, confidence = 0.95) {
+        if (!values || values.length < 2) return { lower: 0, upper: 0 };
+        const mean = this.calculateMean(values);
+        const stdDev = this.calculateStdDev(values);
+        const n = values.length;
+        
+        const tValue = confidence === 0.95 ? 1.96 : (confidence === 0.99 ? 2.576 : 1.645); // 95%, 99%, 90% typically
+        const marginOfError = tValue * (stdDev / Math.sqrt(n));
+        
+        return {
+            lower: mean - marginOfError,
+            upper: mean + marginOfError
+        };
+    }
+
+    // ===== STATISTICAL ANALYSIS =====
+    calculateStrategyStatistics() {
+        if (!this.currentExperiment || !this.currentExperiment.results.length) {
+            return {};
+        }
+
+        const results = this.currentExperiment.results;
+        const promptFilter = document.getElementById('analysis-prompt-filter')?.value;
+        
+        let filteredResults = results;
+        if (promptFilter && promptFilter !== 'all') {
+            filteredResults = results.filter(r => r.prompt === promptFilter);
+        }
+
+        const strategies = {};
+        filteredResults.forEach(result => {
+            const strategyKey = this.getVariationDisplayText(result.variation);
+            if (!strategies[strategyKey]) {
+                strategies[strategyKey] = [];
+            }
+            
+            const rank = this.rankings[result.id];
+            if (rank) {
+                const totalItems = filteredResults.filter(r => r.prompt === result.prompt).length;
+                if (totalItems > 0){
+                    const qualityScore = ((totalItems - rank + 1) / totalItems) * 100;
+                    strategies[strategyKey].push(qualityScore);
+                }
+            }
+        });
+
+        const strategyStats = {};
+        Object.keys(strategies).forEach(strategy => {
+            const scores = strategies[strategy];
+            if (scores.length > 0) {
+                strategyStats[strategy] = {
+                    count: scores.length,
+                    mean: this.calculateMean(scores),
+                    median: this.calculateMedian(scores),
+                    stdDev: this.calculateStdDev(scores),
+                    min: Math.min(...scores),
+                    max: Math.max(...scores),
+                    scores: scores,
+                    confidenceInterval: this.calculateConfidenceInterval(scores)
+                };
+            }
+        });
+        return strategyStats;
+    }
+
+    updateAnalysis() {
+        const analysisType = document.getElementById('analysis-type')?.value;
+        this.updateAnalysisPromptFilterOptions();
+        
+        const analysisSummary = document.getElementById('analysis-summary');
+        const statisticalResults = document.getElementById('statistical-results');
+        
+        if (!analysisSummary || !statisticalResults) {
+            console.warn('Analysis tab elements not found.');
+            return;
+        }
+
+        switch(analysisType) {
+            case 'strategy-comparison': this.displayStrategyComparison(); break;
+            case 'model-comparison': this.displayModelComparison(); break;
+            case 'statistical-significance': this.displayStatisticalSignificance(); break;
+            case 'performance-trends': this.displayPerformanceTrends(); break;
+            default: this.displayStrategyComparison();
+        }
+        this.updateVisualizationsTab(); // Assuming this is also part of analysis view
+    }
+
+    updateAnalysisPromptFilterOptions() {
+        const select = document.getElementById('analysis-prompt-filter');
+        if (!select) return;
+        
+        const currentValue = select.value;
+        select.innerHTML = '<option value="all">All Prompts</option>';
+
+        if (this.currentExperiment && this.currentExperiment.results) {
+            const uniquePrompts = [...new Set(this.currentExperiment.results.map(r => r.prompt))];
+            uniquePrompts.forEach(prompt => {
+                const option = document.createElement('option');
+                option.value = prompt;
+                option.textContent = prompt.length > 50 ? prompt.substring(0, 47) + '...' : prompt;
+                select.appendChild(option);
+            });
+        }
+        select.value = currentValue;
+    }
+
+    displayStrategyComparison() {
+        const stats = this.calculateStrategyStatistics();
+        const html = this.generateStrategyComparisonHTML(stats);
+        
+        document.getElementById('analysis-summary').innerHTML = '<h3>📊 Strategy Performance Comparison</h3>';
+        document.getElementById('statistical-results').innerHTML = html;
+    }
+
+    generateStrategyComparisonHTML(strategyStats) {
+        if (Object.keys(strategyStats).length === 0) {
+            return '<p class="empty-state">No ranked results available for statistical analysis. Please rank some SVGs first or check filters.</p>';
+        }
+        let html = '<table class="stats-table"><thead><tr><th>Strategy</th><th>Count</th><th>Mean Quality</th><th>Median</th><th>Std Dev</th><th>Range</th><th>95% CI</th></tr></thead><tbody>';
+        const sortedStrategies = Object.entries(strategyStats).sort(([,a], [,b]) => b.mean - a.mean);
+        sortedStrategies.forEach(([strategy, stats]) => {
+            html += `<tr><td><strong>${strategy}</strong></td><td>${stats.count}</td><td>${stats.mean.toFixed(1)}%</td><td>${stats.median.toFixed(1)}%</td><td>${stats.stdDev.toFixed(1)}</td><td>${stats.min.toFixed(1)}%- ${stats.max.toFixed(1)}%</td><td>${stats.confidenceInterval.lower.toFixed(1)}%- ${stats.confidenceInterval.upper.toFixed(1)}%</td></tr>`;
+        });
+        html += '</tbody></table>';
+        html += '<div class="performance-ranking"><h4>🏆 Performance Ranking</h4><ol>';
+        sortedStrategies.forEach(([strategy, stats], index) => {
+            const badge = index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
+            html += `<li>${badge} <strong>${strategy}</strong> - ${stats.mean.toFixed(1)}% avg quality</li>`;
+        });
+        html += '</ol></div>';
+        html += '<div class="stats-notes"><h4>📈 Statistical Notes</h4><ul><li>Quality scores are calculated as percentile ranks within each prompt.</li><li>Higher scores indicate better performance (closer to rank 1).</li><li>95% Confidence Intervals show the likely range of true performance.</li><li>Standard deviation indicates consistency (lower = more consistent).</li></ul></div>';
+        return html;
+    }
+
+    calculateModelStatistics() {
+        if (!this.currentExperiment || !this.currentExperiment.results.length) return {};
+        const results = this.currentExperiment.results;
+        const models = {};
+        results.forEach(result => {
+            if (!models[result.model]) models[result.model] = [];
+            const rank = this.rankings[result.id];
+            if (rank) {
+                const totalItems = results.filter(r => r.prompt === result.prompt).length;
+                if(totalItems > 0) {
+                    const qualityScore = ((totalItems - rank + 1) / totalItems) * 100;
+                    models[result.model].push({ qualityScore, processingTime: result.processingTime || 0 });
+                }
+            }
+        });
+        const modelStats = {};
+        Object.keys(models).forEach(model => {
+            const data = models[model];
+            if (data.length > 0) {
+                const qualityScores = data.map(d => d.qualityScore);
+                const processingTimes = data.map(d => d.processingTime);
+                modelStats[model] = {
+                    count: data.length, 
+                    meanQuality: this.calculateMean(qualityScores),
+                    medianQuality: this.calculateMedian(qualityScores),
+                    qualityStdDev: this.calculateStdDev(qualityScores),
+                    meanProcessingTime: this.calculateMean(processingTimes),
+                    qualityScores, processingTimes
+                };
+            }
+        });
+        return modelStats;
+    }
+
+    displayModelComparison() {
+        const modelStats = this.calculateModelStatistics();
+        const html = this.generateModelComparisonHTML(modelStats);
+        document.getElementById('analysis-summary').innerHTML = '<h3>🤖 Model Performance Comparison</h3>';
+        document.getElementById('statistical-results').innerHTML = html;
+    }
+
+    generateModelComparisonHTML(modelStats) {
+        if (Object.keys(modelStats).length === 0) {
+            return '<p class="empty-state">No model data available for comparison. Please rank some SVGs.</p>';
+        }
+        let html = '<table class="stats-table"><thead><tr><th>Model</th><th>Count</th><th>Avg Quality</th><th>Quality StdDev</th><th>Avg Time (ms)</th><th>Quality Range</th></tr></thead><tbody>';
+        const sortedModels = Object.entries(modelStats).sort(([,a], [,b]) => b.meanQuality - a.meanQuality);
+        sortedModels.forEach(([model, stats]) => {
+            const minQuality = Math.min(...stats.qualityScores);
+            const maxQuality = Math.max(...stats.qualityScores);
+            html += `<tr><td><strong>${model}</strong></td><td>${stats.count}</td><td>${stats.meanQuality.toFixed(1)}%</td><td>${stats.qualityStdDev.toFixed(1)}</td><td>${Math.round(stats.meanProcessingTime)}</td><td>${minQuality.toFixed(1)}%- ${maxQuality.toFixed(1)}%</td></tr>`;
+        });
+        html += '</tbody></table>';
+        return html;
+    }
+
+    displayStatisticalSignificance() {
+        document.getElementById('analysis-summary').innerHTML = '<h3>📊 Statistical Significance Testing</h3>';
+        document.getElementById('statistical-results').innerHTML = '<p>P-values and significance tests will be displayed here. Statistical significance is typically inferred for larger datasets.</p>';
+    }
+    displayPerformanceTrends() {
+        document.getElementById('analysis-summary').innerHTML = '<h3>📈 Performance Trends Analysis</h3>';
+        document.getElementById('statistical-results').innerHTML = '<p>Temporal performance patterns will be analyzed here. This feature would involve tracking metrics over time across multiple experiments.</p>';
+    }
+
+    // ===== PERFORMANCE METRICS =====
+    calculatePerformanceMetrics() {
+        if (!this.currentExperiment) return null;
+        const results = this.currentExperiment.results;
+        const completedTasks = this.generationQueue.filter(t => t.status === 'completed').length;
+        const totalTasks = this.generationQueue.length;
+        const rankedResults = results.filter(r => this.rankings[r.id]);
+        const processingTimes = results.filter(r => r.processingTime && r.processingTime > 0).map(r => r.processingTime);
+        return {
+            totalSVGs: results.length,
+            completedTasks, totalTasks,
+            completionRate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
+            rankedSVGs: rankedResults.length,
+            rankingProgress: results.length > 0 ? (rankedResults.length / results.length) * 100 : 0,
+
+    // ===== LOADING & MODAL SYSTEMS =====
+    showLoading(message = 'Loading...') {
+        const overlay = document.getElementById('loading-overlay');
+        const messageEl = document.getElementById('loading-message');
+        if (overlay && messageEl) { 
+            messageEl.textContent = message; 
+            overlay.style.display = 'flex';
+            
+            // Safety timeout to auto-hide loading after 30 seconds
+            setTimeout(() => {
+                if (overlay && overlay.style.display === "flex") {
+                    console.warn("Auto-hiding stuck loading overlay");
+                    this.hideLoading();
+                }
+            }, 30000);
+        }
+    }
+    
+    hideLoading() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) { 
+            overlay.style.display = 'none'; 
+        }
+    }
+    
+    showModal(title, content) {
+        const titleEl = document.getElementById('modal-title');
+        const bodyEl = document.getElementById('modal-body');
+        const overlay = document.getElementById('modal-overlay');
+        
+        if (titleEl && bodyEl && overlay) { 
+            titleEl.textContent = title; 
+            bodyEl.innerHTML = content; 
+            overlay.style.display = 'flex';
+        }
+    }
+    
+    hideModal() {
+        const overlay = document.getElementById('modal-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+    
+    showMessage(message, type = 'info') {
+        // Simple message display - could be enhanced with toast notifications
+        console.log(`${type.toUpperCase()}: ${message}`);
+        
+        // Create a temporary notification
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: ${type === 'error' ? '#ff4444' : type === 'warning' ? '#ffaa00' : type === 'success' ? '#00aa44' : '#4488ff'};
+            color: white;
+            border-radius: 4px;
+            z-index: 10000;
+            max-width: 300px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 4000);
+    }
+}

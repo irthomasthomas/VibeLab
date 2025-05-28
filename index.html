@@ -3,77 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VibeLab - Prompt Variation Testing</title>
+    <title>VibeLab Enhanced - Scientific Prompt Evaluation Framework</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🧪 VibeLab</h1>
-            <p>Test and evaluate virtual few-shot prompt variations</p>
+            <h1>🧪 VibeLab Enhanced</h1>
+            <p>Advanced Scientific Prompt Evaluation Framework with Database Persistence & Statistical Analysis</p>
+            <div class="header-controls">
+                <button id="create-new-experiment" class="primary-btn">+ New Experiment</button>
+                <select id="load-experiment-select">
+                    <option value="">Load Experiment...</option>
+                </select>
+                <span id="current-experiment-name" class="experiment-name"></span>
+            </div>
         </header>
 
         <nav class="tab-nav">
             <button class="tab-btn active" data-tab="setup">Experiment Setup</button>
             <button class="tab-btn" data-tab="queue">Generation Queue</button>
             <button class="tab-btn" data-tab="evaluate">Evaluation</button>
+            <button class="tab-btn" data-tab="analysis">Analysis</button>
             <button class="tab-btn" data-tab="results">Results</button>
         </nav>
 
         <!-- Experiment Setup Tab -->
         <section id="setup-tab" class="tab-content active">
-            <div class="setup-grid">
-                <div class="setup-section">
-                    <h3>Base Prompts</h3>
-                    <div class="prompt-inputs">
-                        <div class="prompt-with-animation"><input type="text" id="prompt1" placeholder="SVG of a pelican riding a bicycle" value="SVG of a pelican riding a bicycle"><label class="animation-flag"><input type="checkbox" id="animated1"> Animated</label></div>
-                        <div class="prompt-with-animation"><input type="text" id="prompt2" placeholder="SVG of a raccoon flying a biplane" value="SVG of a raccoon flying a biplane"><label class="animation-flag"><input type="checkbox" id="animated2"> Animated</label></div>
-                        <button id="add-prompt">+ Add Prompt</button>
-                    </div>
+            <div class="setup-section">
+                <h3>🔬 Experiment Configuration</h3>
+                
+                <div class="form-group">
+                    <label for="experiment-name">Experiment Name:</label>
+                    <input type="text" id="experiment-name" placeholder="Enter experiment name..." />
                 </div>
 
-                <div class="setup-section">
-                    <h3>Models</h3>
-                    <div class="model-selection">
-                        <label><input type="checkbox" value="anthropic/claude-3-5-sonnet-20241022" checked> Claude 3.5 Sonnet</label>
+                <div class="form-group">
+                    <label for="experiment-description">Description:</label>
+                    <textarea id="experiment-description" placeholder="Describe your experiment..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Base Prompts:</label>
+                    <div id="prompt-container">
+                        <div class="prompt-input-group">
+                            <textarea class="prompt-input" placeholder="Enter a base prompt..."></textarea>
+                            <button type="button" class="remove-prompt">×</button>
+                        </div>
+                    </div>
+                    <button id="add-prompt" class="secondary-btn">+ Add Prompt</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Model Selection:</label>
+                    <div id="model-list">
+                        <label><input type="checkbox" value="claude-3-sonnet-20240229"> Claude 3 Sonnet</label>
+                        <label><input type="checkbox" value="claude-3-haiku-20240307"> Claude 3 Haiku</label>
                         <label><input type="checkbox" value="gpt-4"> GPT-4</label>
-                        <label><input type="checkbox" value="claude-3-opus-20240229"> Claude 3 Opus</label>
-                        <input type="text" id="custom-model" placeholder="Custom model name">
-                        <button id="add-model">+ Add Custom</button>
+                        <label><input type="checkbox" value="gpt-3.5-turbo"> GPT-3.5 Turbo</label>
+                    </div>
+                    <div class="custom-model-input">
+                        <input type="text" id="custom-model" placeholder="Custom model name...">
+                        <button id="add-model" class="secondary-btn">Add</button>
                     </div>
                 </div>
 
-                <div class="setup-section">
-                    <h3>Prompt Variations</h3>
-                    <div class="variation-config">
-                        <label><input type="checkbox" checked> No few-shot (baseline)</label>
-                        <label><input type="checkbox" checked> Real few-shot examples</label>
-                        <label><input type="checkbox" checked> "This section contains N examples..."</label>
-                        <label><input type="checkbox" checked> "Based on N examples below..."</label>
-                        <label><input type="checkbox" checked> [Example 1][Example 2]...[Example N]</label>
-                        <label><input type="checkbox" checked> "Following ten brilliant examples..."</label>
-                        <label><input type="checkbox" checked> "Drawing from extensive training..."</label>
-
-                        <div class="n-values">
-                            <label>N values: <input type="text" value="3,5,10" id="n-values"></label>
-                        </div>
-
-                        <div class="custom-variations">
-                            <h4>Custom Variations</h4>
-                            <textarea id="custom-variations" placeholder="Enter custom few-shot variations, one per line"></textarea>
+                <div class="form-group">
+                    <label>Prompt Variations:</label>
+                    <div id="variation-container">
+                        <div class="variation-input-group">
+                            <input type="text" class="variation-input" placeholder="Variation name (e.g., 'tone')">
+                            <textarea class="variation-values" placeholder="Values separated by newlines..."></textarea>
+                            <button type="button" class="remove-variation">×</button>
                         </div>
                     </div>
+                    <button id="add-variation" class="secondary-btn">+ Add Variation</button>
                 </div>
 
-                <div class="setup-section">
-                    <h3>Generation Settings</h3>
-                    <div class="gen-settings">
-                        <label>SVGs per variation: <input type="number" id="svgs-per-var" value="4" min="1" max="10"></label>
-                        <label>Max parallel jobs: <input type="number" id="max-parallel" value="3" min="1" max="10"></label>
-                        <label>Experiment name: <input type="text" id="experiment-name" placeholder="Auto-generated if empty"></label>
-                        <label><input type="checkbox" id="skip-baseline"> Skip baseline if exists</label>
-                        <button id="start-experiment" class="primary-btn">Create Experiment</button>
-                    </div>
+                <div class="form-group">
+                    <label for="svgs-per-var">Generations per Variation:</label>
+                    <input type="number" id="svgs-per-var" value="4" min="1" max="20">
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="skip-baseline">
+                        Skip baseline (use only variations)
+                    </label>
+                </div>
+
+                <div class="setup-actions">
+                    <button id="start-experiment" class="primary-btn">🚀 Create Experiment</button>
+                    <button id="save-experiment" class="secondary-btn">💾 Save Draft</button>
                 </div>
             </div>
         </section>
@@ -81,10 +102,13 @@
         <!-- Generation Queue Tab -->
         <section id="queue-tab" class="tab-content">
             <div class="queue-controls">
-                <button id="start-queue" class="primary-btn" disabled>Start Generation</button>
-                <button id="pause-queue" disabled>Pause</button>
-                <button id="clear-queue" disabled>Clear Queue</button>
-                <span id="queue-status">No experiment loaded</span>
+                <button id="start-queue" class="primary-btn" disabled>▶️ Start Generation</button>
+                <button id="pause-queue" class="secondary-btn" disabled>⏸️ Pause</button>
+                <button id="clear-queue" class="danger-btn" disabled>🗑️ Clear Queue</button>
+                <div class="queue-stats">
+                    <span id="queue-status">No experiment loaded</span>
+                    <span id="queue-progress"></span>
+                </div>
             </div>
 
             <div class="queue-list" id="queue-list">
@@ -94,75 +118,106 @@
 
         <!-- Evaluation Tab -->
         <section id="evaluate-tab" class="tab-content">
-            <div class="eval-controls">
-                <select id="eval-prompt-filter">
-                    <option value="all">All Prompts</option>
-                </select>
-                <select id="eval-view-mode">
-                    <option value="per-prompt">Per Prompt Ranking</option>
-                    <option value="global">Global Comparison</option>
-                </select>
-                <button id="reset-rankings">Reset Rankings</button>
-                <select id="analysis-mode">
-                    <option value="simple">Simple Average Ranking</option>
-                    <option value="statistical">Statistical Analysis</option>
-                </select>
-                <label><input type="checkbox" id="hide-details" checked> Hide details (images only)</label>
+            <div class="evaluation-section">
+                <h3>📊 Response Evaluation</h3>
+                <div class="evaluation-controls">
+                    <select id="eval-prompt-filter">
+                        <option value="all">All Prompts</option>
+                    </select>
+                    <select id="eval-view-mode">
+                        <option value="carousel">Carousel View</option>
+                        <option value="grid">Grid View</option>
+                    </select>
+                    <button id="reset-rankings" class="secondary-btn">Reset Rankings</button>
+                    <button id="auto-rank" class="primary-btn">Auto Rank</button>
+                    <label><input type="checkbox" id="hide-details"> Hide Details</label>
+                </div>
+                <div id="evaluation-content">
+                    <p>Load an experiment with generated responses to begin evaluation.</p>
+                </div>
+                
+                <!-- Carousel controls -->
+                <div id="carousel-controls" style="display: none;">
+                    <button id="carousel-prev">← Previous</button>
+                    <input type="range" id="carousel-rating" min="1" max="5" value="3">
+                    <button id="carousel-next">Next →</button>
+                </div>
             </div>
+        </section>
 
-            <div class="ranking-area">
-                <div id="ranking-instructions" class="instructions">
-                    Drag and drop SVGs to rank them from best (top) to worst (bottom)
+        <!-- Analysis Tab -->
+        <section id="analysis-tab" class="tab-content">
+            <div class="analysis-section">
+                <h3>📈 Statistical Analysis</h3>
+                <div class="analysis-controls">
+                    <select id="analysis-prompt-filter">
+                        <option value="all">All Prompts</option>
+                    </select>
+                    <select id="analysis-type">
+                        <option value="summary">Summary Statistics</option>
+                        <option value="comparison">Model Comparison</option>
+                        <option value="correlation">Correlation Analysis</option>
+                    </select>
+                    <button id="generate-report" class="primary-btn">Generate Report</button>
+                    <button id="export-analysis" class="secondary-btn">Export Analysis</button>
                 </div>
-                <div id="statistics-panel" class="statistics-panel" style="display: none;">
-                    <!-- Statistics will be displayed here -->
-                </div>
-                <div id="svg-grid" class="svg-ranking-grid">
-                    <!-- SVGs will be populated here for ranking -->
+                <div id="analysis-results">
+                    <p>Select an experiment and run analysis to see results here.</p>
                 </div>
             </div>
         </section>
 
         <!-- Results Tab -->
         <section id="results-tab" class="tab-content">
-            <div class="results-controls">
-                <button id="export-results">Export to JSONL</button>
-                <button id="save-experiment">Save Experiment</button>
-                <button id="load-experiment">Load Experiment</button>
-            </div>
-
-            <div class="results-summary">
-                <h3>Experiment Summary</h3>
-                <div id="summary-stats"></div>
-            </div>
-
-            <div class="results-table">
-                <table id="results-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Prompt</th>
-                            <th>Variation Type</th>
-                            <th>Model</th>
-                            <th>Generated</th>
-                            <th>Quality Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Results will be populated here -->
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="experiment-overview">
-                <h3>Experiment Timeline</h3>
-                <div id="experiment-grid">
-                    <!-- Timeline will be populated here -->
+            <div class="results-section">
+                <h3>📋 Experiment Results</h3>
+                <div class="results-controls">
+                    <input type="text" id="results-search" placeholder="Search results...">
+                    <select id="results-sort">
+                        <option value="timestamp">Sort by Time</option>
+                        <option value="rating">Sort by Rating</option>
+                        <option value="model">Sort by Model</option>
+                    </select>
+                    <select id="results-view">
+                        <option value="table">Table View</option>
+                        <option value="cards">Card View</option>
+                    </select>
+                    <button id="export-results" class="primary-btn">Export Results</button>
+                    <button id="duplicate-experiment" class="secondary-btn">Duplicate</button>
+                    <button id="delete-experiment" class="danger-btn">Delete</button>
+                </div>
+                <div id="results-content">
+                    <p>Complete an experiment to view results here.</p>
                 </div>
             </div>
         </section>
     </div>
 
-    <script src="app.js"></script>
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p id="loading-message">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Modal dialogs -->
+    <div id="modal-overlay" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">Title</h3>
+                <button id="modal-close" class="modal-close">×</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Modal content will be populated here -->
+            </div>
+            <div class="modal-footer">
+                <button id="modal-cancel" class="secondary-btn">Cancel</button>
+                <button id="modal-confirm" class="primary-btn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="enhanced-app.js"></script>
 </body>
 </html>
