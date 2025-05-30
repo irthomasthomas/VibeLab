@@ -1,0 +1,60 @@
+{
+  "templates": [
+    {
+      "id": "pelican-bicycle",
+      "name": "Pelican on Bicycle",
+      "prompt": "SVG of a pelican riding a bicycle",
+      "tags": [
+        "animals",
+        "vehicles"
+      ],
+      "created": "2025-05-29T00:31:45.915403",
+      "animated": false
+    },
+    {
+      "id": "raccoon-biplane",
+      "name": "Raccoon Flying Biplane",
+      "prompt": "SVG of a raccoon flying a biplane",
+      "tags": [
+        "animals",
+        "aircraft"
+      ],
+      "created": "2025-05-29T00:31:45.915414",
+      "animated": false
+    },
+    {
+      "id": "a351136e-8816-4061-bdd3-afd2ca98d4ef",
+      "name": "Animated Pelican on Bicycle",
+      "prompt": "Animated SVG of a pelican riding a bicycle.",
+      "tags": [],
+      "created": "2025-05-29T14:06:15.387772",
+      "animated": true
+    },
+    {
+      "id": "7601d535-eaf3-492a-8e52-f8587d3da20c",
+      "name": "Animated Pelican on Bicycle",
+      "prompt": "Animated SVG of a pelican riding a bicycle.",
+      "tags": [],
+      "created": "2025-05-29T14:06:15.388233",
+      "animated": true
+    },
+    {
+      "id": "756ac891-7db8-4f9a-ada3-e86205b9743f",
+      "name": "Animated pelican",
+      "prompt": "SVG of a pelican riding a bicycle",
+      "tags": [
+        "animal"
+      ],
+      "created": "2025-05-29T14:06:55.429421",
+      "animated": false
+    },
+    {
+      "id": "797b77b4-b777-47ff-8300-54ab5c3951c6",
+      "name": "animated pelican",
+      "prompt": "SVG of a pelican riding a bicycle",
+      "tags": [],
+      "created": "2025-05-29T14:07:01.797944",
+      "animated": false
+    }
+  ]
+}

@@ -42,24 +42,123 @@ class LLMHandler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(response).encode('utf-8'))
                 
             except Exception as e:
-                self.send_response(500)
+                self.send_error_response(str(e))
+        
+        elif self.path == '/prompts':
+            try:
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length)
+                data = json.loads(post_data.decode('utf-8'))
+                
+                from prompt_manager import PromptManager
+                pm = PromptManager()
+                
+                new_template = pm.save_template(
+                    name=data.get('name', ''),
+                    prompt=data.get('prompt', ''),
+                    tags=data.get('tags', []),
+                    animated=data.get('animated', False)
+                )
+                
+                self.send_json_response({'success': True, 'template': new_template})
+                
+            except Exception as e:
+                self.send_error_response(str(e))
+    
+    def do_GET(self):
+        if self.path == '/prompts':
+            try:
+                from prompt_manager import PromptManager
+                pm = PromptManager()
+                templates = pm.get_templates()
+                
+                self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 
-                error_response = {
-                    'success': False,
-                    'error': str(e)
+                response = {
+                    'success': True,
+                    'templates': templates
                 }
-                self.wfile.write(json.dumps(error_response).encode('utf-8'))
+                self.wfile.write(json.dumps(response).encode('utf-8'))
+                
+            except Exception as e:
+                self.send_error_response(str(e))
+        else:
+            self.send_error(404, "Not found")
+    
+    def do_PUT(self):
+        if self.path.startswith('/prompts/'):
+            try:
+                template_id = self.path.split('/')[-1]
+                content_length = int(self.headers['Content-Length'])
+                post_data = self.rfile.read(content_length)
+                data = json.loads(post_data.decode('utf-8'))
+                
+                from prompt_manager import PromptManager
+                pm = PromptManager()
+                
+                updated = pm.update_template(
+                    template_id,
+                    name=data.get('name'),
+                    prompt=data.get('prompt'),
+                    tags=data.get('tags'),
+                    animated=data.get('animated')
+                )
+                
+                if updated:
+                    self.send_json_response({'success': True, 'template': updated})
+                else:
+                    self.send_error(404, "Template not found")
+                    
+            except Exception as e:
+                self.send_error_response(str(e))
+    
+    def do_DELETE(self):
+        if self.path.startswith('/prompts/'):
+            try:
+                template_id = self.path.split('/')[-1]
+                
+                from prompt_manager import PromptManager
+                pm = PromptManager()
+                
+                success = pm.delete_template(template_id)
+                
+                if success:
+                    self.send_json_response({'success': True})
+                else:
+                    self.send_error(404, "Template not found")
+                    
+            except Exception as e:
+                self.send_error_response(str(e))
     
     def do_OPTIONS(self):
         # Handle CORS preflight
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, PUT, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
+    
+    def send_json_response(self, data):
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode('utf-8'))
+
+    def send_error_response(self, error_msg):
+        self.send_response(500)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        
+        error_response = {
+            'success': False,
+            'error': error_msg
+        }
+        self.wfile.write(json.dumps(error_response).encode('utf-8'))
     
     def execute_llm(self, model, prompt):
         """Execute llm CLI command and return result"""

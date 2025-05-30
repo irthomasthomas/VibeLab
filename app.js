@@ -7,9 +7,11 @@ class VibeLab {
         this.isGenerating = false;
         this.results = [];
         this.rankings = {};
+        this.templates = [];
 
         this.initializeEventListeners();
         this.loadSavedExperiments();
+        this.loadTemplates();
     }
 
     initializeEventListeners() {
@@ -24,6 +26,7 @@ class VibeLab {
         // Setup tab events
         document.getElementById('add-prompt').addEventListener('click', () => this.addPromptInput());
         document.getElementById('add-model').addEventListener('click', () => this.addCustomModel());
+        document.getElementById('add-prompt').addEventListener('click', () => this.addPromptInput());
         document.getElementById('start-experiment').addEventListener('click', () => this.createExperiment());
 
         // Queue tab events
@@ -42,9 +45,22 @@ class VibeLab {
         document.getElementById('export-results').addEventListener('click', () => this.exportResults());
         document.getElementById('save-experiment').addEventListener('click', () => this.saveExperiment());
         document.getElementById('load-experiment').addEventListener('click', () => this.loadExperiment());
+        // Template management events
+        document.getElementById('load-template').addEventListener('click', () => this.loadSelectedTemplate());
+        document.getElementById('save-as-template').addEventListener('click', () => this.saveCurrentAsTemplate());
+        document.getElementById('manage-templates').addEventListener('click', () => this.showTemplateManager());
+        document.getElementById('create-template').addEventListener('click', () => this.createNewTemplate());
+        
+        // Modal close handlers
+        document.querySelector('.close').addEventListener('click', () => this.hideTemplateManager());
+        document.getElementById('template-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'template-modal') {
+                this.hideTemplateManager();
+            }
+        });
     }
 
-    switchTab(tabName) {
+switchTab(tabName) {
         // Update tab buttons
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
@@ -53,15 +69,14 @@ class VibeLab {
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
         document.getElementById(`${tabName}-tab`).classList.add('active');
 
-        // Update content based on tab
+        // Update content based on tab (optional, but good for conditional logic)
         if (tabName === 'evaluate') {
             this.updateEvaluationView();
         } else if (tabName === 'results') {
             this.updateResultsTable();
             this.updateExperimentOverview();
         }
-    }
-
+}
     addPromptInput() {
         const container = document.querySelector('.prompt-inputs');
         const promptCount = container.querySelectorAll('input[type="text"]').length + 1;
@@ -139,13 +154,13 @@ class VibeLab {
     }
 
     getPrompts() {
-        const promptInputs = document.querySelectorAll('.prompt-inputs input[type="text"]');
+        const promptInputs = document.querySelectorAll('#dynamic-prompts .prompt-with-animation input[type="text"]');
         const prompts = [];
 
         promptInputs.forEach((input, index) => {
             const value = input.value.trim();
             if (value.length > 0) {
-                const animatedCheckbox = document.getElementById(`animated${index + 1}`);
+                const animatedCheckbox = input.nextElementSibling.querySelector("input[type=\"checkbox\"]");
                 prompts.push({
                     text: value,
                     animated: animatedCheckbox ? animatedCheckbox.checked : false
@@ -606,6 +621,7 @@ class VibeLab {
 
     resetRankings() {
         this.rankings = {};
+        this.templates = [];
         this.updateEvaluationView();
 
         // Update results table after reset
@@ -984,9 +1000,231 @@ class VibeLab {
         html += '</div>';
         return html;
     }
+
+    // Template Management Methods
+    async loadTemplates() {
+        try {
+            const response = await fetch('http://localhost:8081/prompts');
+            const data = await response.json();
+            
+            if (data.success) {
+                this.templates = data.templates;
+                this.updateTemplateSelector();
+                this.loadDefaultPrompts();
+            }
+        } catch (error) {
+            console.error('Failed to load templates:', error);
+            this.loadDefaultPrompts();
+        }
+    }
+
+    updateTemplateSelector() {
+        const selector = document.getElementById('template-selector');
+        if (!selector) return;
+        
+        selector.innerHTML = '<option value="">Select a template or create custom...</option>';
+        
+        this.templates.forEach(template => {
+            const option = document.createElement('option');
+            option.value = template.id;
+            option.textContent = template.name;
+            selector.appendChild(option);
+        });
+    }
+
+    loadDefaultPrompts() {
+        const container = document.getElementById('dynamic-prompts');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        const defaultPrompts = this.templates.length > 0 
+            ? this.templates.slice(0, 2) 
+            : [
+                { prompt: "SVG of a pelican riding a bicycle", animated: false },
+                { prompt: "SVG of a raccoon flying a biplane", animated: false }
+            ];
+        
+        defaultPrompts.forEach((template) => {
+            this.addPromptToDOM(template.prompt, template.animated);
+        });
+    }
+
+    addPromptToDOM(promptText = '', animated = false) {
+        const container = document.getElementById('dynamic-prompts');
+        if (!container) return;
+        
+        const promptDiv = document.createElement('div');
+        promptDiv.className = 'prompt-with-animation';
+        
+        promptDiv.innerHTML = `
+            <input type="text" placeholder="Enter your prompt..." value="${promptText}">
+            <label class="animation-flag">
+                <input type="checkbox" ${animated ? 'checked' : ''}> Animated
+            </label>
+            <button class="remove-prompt" onclick="this.parentElement.remove()">×</button>
+        `;
+        
+        container.appendChild(promptDiv);
+    }
+
+    loadSelectedTemplate() {
+        const selector = document.getElementById('template-selector');
+        const selectedId = selector.value;
+        
+        if (!selectedId) return;
+        
+        const template = this.templates.find(t => t.id === selectedId);
+        if (!template) return;
+        
+        const container = document.getElementById('dynamic-prompts');
+        container.innerHTML = '';
+        
+        this.addPromptToDOM(template.prompt, template.animated);
+    }
+
+    async saveCurrentAsTemplate() {
+        const prompts = this.getPrompts();
+        if (prompts.length === 0) {
+            alert('No prompts to save as template');
+            return;
+        }
+        
+        const name = prompt('Enter template name:');
+        if (!name) return;
+        
+        const tags = prompt('Enter tags (comma-separated):') || '';
+        
+        try {
+            const response = await fetch('http://localhost:8081/prompts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    prompt: prompts[0].text,
+                    tags: tags.split(',').map(t => t.trim()).filter(t => t),
+                    animated: prompts[0].animated
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert('Template saved successfully!');
+                await this.loadTemplates();
+            } else {
+                alert('Failed to save template: ' + data.error);
+            }
+        } catch (error) {
+            alert('Failed to save template: ' + error.message);
+        }
+    }
+
+    showTemplateManager() {
+        const modal = document.getElementById('template-modal');
+        modal.style.display = 'block';
+        this.refreshTemplateList();
+    }
+
+    hideTemplateManager() {
+        const modal = document.getElementById('template-modal');
+        modal.style.display = 'none';
+    }
+
+    refreshTemplateList() {
+        const container = document.getElementById('template-list');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        this.templates.forEach(template => {
+            const item = document.createElement('div');
+            item.className = 'template-item';
+            
+            item.innerHTML = `
+                <h4>${template.name}</h4>
+                <div class="template-tags">${template.tags.join(', ')}</div>
+                <div class="template-prompt">${template.prompt}</div>
+                <div class="template-actions">
+                    <button onclick="vibelab.deleteTemplate('${template.id}')">Delete</button>
+                </div>
+            `;
+            
+            container.appendChild(item);
+        });
+    }
+
+    async deleteTemplate(templateId) {
+        if (!confirm('Delete this template?')) return;
+        
+        try {
+            const response = await fetch(`http://localhost:8081/prompts/${templateId}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                await this.loadTemplates();
+                this.refreshTemplateList();
+            } else {
+                alert('Failed to delete template: ' + data.error);
+            }
+        } catch (error) {
+            alert('Failed to delete template: ' + error.message);
+        }
+    }
+
+    async createNewTemplate() {
+        const name = document.getElementById('new-template-name').value.trim();
+        const prompt = document.getElementById('new-template-prompt').value.trim();
+        const tags = document.getElementById('new-template-tags').value.trim();
+        const animated = document.getElementById('new-template-animated').checked;
+        
+        if (!name || !prompt) {
+            alert('Name and prompt are required');
+            return;
+        }
+        
+        try {
+            const response = await fetch('http://localhost:8081/prompts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    prompt: prompt,
+                    tags: tags.split(',').map(t => t.trim()).filter(t => t),
+                    animated: animated
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('new-template-name').value = '';
+                document.getElementById('new-template-prompt').value = '';
+                document.getElementById('new-template-tags').value = '';
+                document.getElementById('new-template-animated').checked = false;
+                
+                await this.loadTemplates();
+                this.refreshTemplateList();
+            } else {
+                alert('Failed to create template: ' + data.error);
+            }
+        } catch (error) {
+            alert('Failed to create template: ' + error.message);
+        }
+    }
 }
 
 // Initialize the application when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     window.vibeLab = new VibeLab();
+});
+
+// Initialize VibeLab when page loads
+let vibelab;
+document.addEventListener('DOMContentLoaded', () => {
+    vibelab = new VibeLab();
 });

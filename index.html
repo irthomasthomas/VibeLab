@@ -23,15 +23,29 @@
         <!-- Experiment Setup Tab -->
         <section id="setup-tab" class="tab-content active">
             <div class="setup-grid">
-                <div class="setup-section">
+                                <div class="setup-section">
                     <h3>Base Prompts</h3>
-                    <div class="prompt-inputs">
-                        <div class="prompt-with-animation"><input type="text" id="prompt1" placeholder="SVG of a pelican riding a bicycle" value="SVG of a pelican riding a bicycle"><label class="animation-flag"><input type="checkbox" id="animated1"> Animated</label></div>
-                        <div class="prompt-with-animation"><input type="text" id="prompt2" placeholder="SVG of a raccoon flying a biplane" value="SVG of a raccoon flying a biplane"><label class="animation-flag"><input type="checkbox" id="animated2"> Animated</label></div>
-                        <button id="add-prompt">+ Add Prompt</button>
+                    
+                    <!-- Template Management -->
+                    <div class="template-management">
+                        <div class="template-selector-row">
+                            <select id="template-selector">
+                                <option value="">Select a template or create custom...</option>
+                            </select>
+                            <button id="load-template">Load Template</button>
+                            <button id="save-as-template">Save as Template</button>
+                        </div>
+                        <div class="template-actions">
+                            <button id="manage-templates">Manage Templates</button>
+                        </div>
                     </div>
+                    
+                    <!-- Dynamic Prompts -->
+                    <div class="prompt-inputs" id="dynamic-prompts">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                    <button id="add-prompt">+ Add Custom Prompt</button>
                 </div>
-
                 <div class="setup-section">
                     <h3>Models</h3>
                     <div class="model-selection">
@@ -164,5 +178,27 @@
     </div>
 
     <script src="app.js"></script>
+
+    <!-- Template Management Modal -->
+    <div id="template-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Manage Templates</h3>
+            <div id="template-list">
+                <!-- Will be populated dynamically -->
+            </div>
+            <div class="template-form">
+                <h4>Create New Template</h4>
+                <input type="text" id="new-template-name" placeholder="Template name">
+                <textarea id="new-template-prompt" placeholder="Prompt text"></textarea>
+                <input type="text" id="new-template-tags" placeholder="Tags (comma-separated)">
+                <label>
+                    <input type="checkbox" id="new-template-animated"> Animated
+                </label>
+                <button id="create-template">Create Template</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
