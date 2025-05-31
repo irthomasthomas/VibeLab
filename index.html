@@ -70,6 +70,19 @@
                         <label><input type="checkbox" value="creative_inspiration" data-name="Creative"> Creative Inspiration</label>
                         <label><input type="checkbox" value="few_shot" data-name="Few-Shot"> Few-Shot Examples</label>
                     </div>
+            <!-- Multi-Step Conversation Panel -->
+            <div class="setup-section">
+                <h3>Multi-Step Conversations</h3>
+                <div class="multi-step-config">
+                    <label><input type="checkbox" id="enable-multi-step"> Enable multi-step conversations</label>
+                    <div id="multi-step-options" style="display: none;">
+                        <label><input type="checkbox" id="auto-try-harder"> Auto "try harder" on poor results</label>
+                        <label><input type="checkbox" id="iterative-refinement"> Enable iterative refinement</label>
+                        <label>Max conversation steps: <input type="number" id="max-conversation-steps" value="3" min="1" max="10"></label>
+                    </div>
+                </div>
+            </div>
+
                     <details>
                         <summary>Advanced Options</summary>
                         <div class="advanced-variations">

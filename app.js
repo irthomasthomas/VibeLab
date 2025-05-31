@@ -268,7 +268,8 @@ getPromptVariations() {
                 'constraint_focus': 'Focus on creating clean, minimal SVG code with optimal performance. Avoid unnecessary complexity. {prompt}',
                 'creative_inspiration': 'Draw inspiration from modern graphic design principles. Make it visually striking and memorable. {prompt}',
                 'few_shot': 'Here are examples of excellent SVG creation:\nExample 1: Simple shapes with clean paths\nExample 2: Proper use of viewBox and scaling\nExample 3: Effective color schemes\n\nNow create: {prompt}'
-            };
+            ,
+            'multi_step': '{prompt}',  // Multi-step handled by conversation system};
         
             return templates[type] || '{prompt}';
         }
@@ -294,36 +295,78 @@ getPromptVariations() {
         }
     EOF; sleep 2
 
-    generateQueue() {
+generateQueue() {
         this.generationQueue = [];
         const { prompts, models, variations, svgsPerVar, skipBaseline } = this.currentExperiment;
-
-        prompts.forEach(promptObj => {
+        const enableMultiStep = document.getElementById('enable-multi-step')?.checked || false;
+        
+        prompts.forEach(prompt => {
             models.forEach(model => {
-                variations.forEach(variation => {
-                    // Skip baseline variations if requested and it's the baseline type
-                    if (skipBaseline && variation.type === 'baseline') return;
-
+                // Generate baseline if not skipping
+                if (!skipBaseline) {
                     for (let i = 0; i < svgsPerVar; i++) {
-                        this.generationQueue.push({
-                            id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                            prompt: promptObj.text,
-                            animated: promptObj.animated,
-                            model,
-                            variation,
-                            instance: i + 1,
+                        const queueItem = {
+                            id: `${prompt.text}_${model}_base_${i}`,
+                            prompt: prompt.text,
+                            animated: prompt.animated,
+                            model: model,
+                            variation: { type: 'base', template: '{prompt}' },
                             status: 'pending',
-                            progress: 0,
-                            result: null,
-                            error: null
-                        });
+                            progress: 0
+                        };
+                        
+                        // Mark for multi-step if enabled
+                        if (enableMultiStep) {
+                            queueItem.enableMultiStep = true;
+                            queueItem.maxSteps = parseInt(document.getElementById('max-conversation-steps')?.value || 3);
+                        }
+                        
+                        this.generationQueue.push(queueItem);
+                    }
+                }
+                
+                // Generate variations
+                variations.forEach(variation => {
+                    for (let i = 0; i < svgsPerVar; i++) {
+                        const queueItem = {
+                            id: `${prompt.text}_${model}_${variation.type}_${i}`,
+                            prompt: prompt.text,
+                            animated: prompt.animated,
+                            model: model,
+                            variation: variation,
+                            status: 'pending',
+                            progress: 0
+                        };
+                        
+                        // Mark for multi-step if enabled and applicable
+                        if (enableMultiStep && variation.type !== 'multi_step') {
+                            queueItem.enableMultiStep = true;
+                            queueItem.maxSteps = parseInt(document.getElementById('max-conversation-steps')?.value || 3);
+                        }
+                        
+                        this.generationQueue.push(queueItem);
                     }
                 });
+                
+                // Add explicit multi-step conversation if enabled
+                if (enableMultiStep) {
+                    const multiStepItem = {
+                        id: `${prompt.text}_${model}_multi_step_conversation`,
+                        prompt: prompt.text,
+                        animated: prompt.animated,
+                        model: model,
+                        variation: { type: 'multi_step', template: '{prompt}' },
+                        status: 'pending',
+                        progress: 0,
+                        isMultiStep: true,
+                        maxSteps: parseInt(document.getElementById('max-conversation-steps')?.value || 3)
+                    };
+                    this.generationQueue.push(multiStepItem);
+                }
             });
         });
-
+        
         this.updateQueueDisplay();
-        document.getElementById('start-queue').disabled = false;
     }
 
     updateQueueDisplay() {
