@@ -54,8 +54,19 @@ class VibeLab {
         // Modal close handlers
         document.querySelector('.close').addEventListener('click', () => this.hideTemplateManager());
         document.getElementById('template-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'template-modal') {
-                this.hideTemplateManager();
+            const customModel = document.getElementById('custom-model').value.trim();
+            if (customModel) {
+                // Add to UI
+                const modelSelection = document.querySelector('.model-selection');
+                const label = document.createElement('label');
+                label.innerHTML = ;
+                modelSelection.appendChild(label);
+                
+                // Save to database
+                this.registerModel(customModel, 'base');
+                
+                // Clear input
+                document.getElementById('custom-model').value = '';
             }
         });
         // Custom prompt modifier events
@@ -109,7 +120,8 @@ switchTab(tabName) {
         } else if (tabName === 'results') {
             this.updateResultsTable();
             this.updateExperimentOverview();
-        }
+        
+            this.listStoredExperiments();}
 }
     addPromptInput() {
         const container = document.querySelector('.prompt-inputs');
@@ -1281,4 +1293,37 @@ document.addEventListener('DOMContentLoaded', () => {
 let vibelab;
 document.addEventListener('DOMContentLoaded', () => {
     vibelab = new VibeLab();
+
+    async registerModel(modelName, modelType = 'base') {
+        try {
+            const dbAPI = new DatabaseAPI();
+            await dbAPI.registerModel({
+                name: modelName,
+                type: modelType
+            });
+            console.log('Model registered:', modelName);
+        } catch (error) {
+            console.log('Model registration failed (might already exist):', error.message);
+        }
+    }
+    
+    async loadSavedModels() {
+        try {
+            const dbAPI = new DatabaseAPI();
+            const models = await dbAPI.getModels();
+            
+            const modelSelection = document.querySelector('.model-selection');
+            
+            // Add saved models to UI
+            models.forEach(model => {
+                if (!document.querySelector()) {
+                    const label = document.createElement('label');
+                    label.innerHTML = ;
+                    modelSelection.appendChild(label);
+                }
+            });
+        } catch (error) {
+            console.error('Failed to load saved models:', error);
+        }
+    }
 });
