@@ -70,24 +70,6 @@ class VibeLab {
             
     
     
-    async loadSavedModels() {
-        try {
-            const dbAPI = new DatabaseAPI();
-            const models = await dbAPI.getModels();
-            
-            const modelSelection = document.querySelector('.model-selection');
-            
-            models.forEach(model => {
-                if (!document.querySelector(`input[value="${model.name}"]`)) {
-                    const label = document.createElement('label');
-                    label.innerHTML = `<input type="checkbox" value="${model.name}"> ${model.name}`;
-                    modelSelection.appendChild(label);
-                }
-            });
-        } catch (error) {
-            console.error('Failed to load saved models:', error);
-        }
-    }
 }
         });
         // Custom prompt modifier events
