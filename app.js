@@ -54,58 +54,10 @@ class VibeLab {
         // Modal close handlers
         document.querySelector('.close').addEventListener('click', () => this.hideTemplateManager());
         document.getElementById('template-modal').addEventListener('click', (e) => {
-            const customModel = document.getElementById('custom-model').value.trim();
-            if (customModel) {
-                // Add to UI
-                const modelSelection = document.querySelector('.model-selection');
-                const label = document.createElement('label');
-                label.innerHTML = `<input type="checkbox" value="${customModel}" checked> ${customModel}`;
-                modelSelection.appendChild(label);
-                
-                // Save to database
-                this.registerModel(customModel, 'base');
-                
-                // Clear input
-                document.getElementById('custom-model').value = '';
-            
-    
-    
-}
+            if (e.target.id === 'template-modal') {
+                this.hideTemplateManager();
+            }
         });
-        // Custom prompt modifier events
-        document.getElementById('add-system-prompt')?.addEventListener('click', () => {
-            const container = document.getElementById('custom-system-prompts');
-            const newItem = document.createElement('div');
-            newItem.className = 'custom-prompt-item';
-            newItem.innerHTML = `
-                <input type="text" class="custom-system-prompt" placeholder="e.g., You are a professional graphic designer with 15 years of experience..." />
-                <button type="button" class="remove-custom-prompt">×</button>
-            `;
-            newItem.querySelector('.remove-custom-prompt').addEventListener('click', () => newItem.remove());
-            container.appendChild(newItem);
-        });
-        
-        document.getElementById('add-modifier')?.addEventListener('click', () => {
-            const container = document.getElementById('custom-modifiers');
-            const newItem = document.createElement('div');
-            newItem.className = 'custom-modifier-item';
-            newItem.innerHTML = `
-                <label>Name:</label>
-                <input type="text" class="modifier-name" placeholder="e.g., Oxford Style" />
-                <label>Template:</label>
-                <textarea class="modifier-template" placeholder="e.g., Rewrite this prompt in the style of a professional from Oxford University: {prompt}"></textarea>
-                <button type="button" class="remove-modifier">×</button>
-            `;
-            newItem.querySelector('.remove-modifier').addEventListener('click', () => newItem.remove());
-            container.appendChild(newItem);
-        });
-        
-        // Multi-step toggle
-        document.getElementById('enable-multi-step')?.addEventListener('change', (e) => {
-            const config = document.getElementById('multi-step-config');
-            if (config) config.style.display = e.target.checked ? 'block' : 'none';
-        });
-
     }
 
 switchTab(tabName) {
@@ -123,8 +75,7 @@ switchTab(tabName) {
         } else if (tabName === 'results') {
             this.updateResultsTable();
             this.updateExperimentOverview();
-        
-            this.listStoredExperiments();}
+        }
 }
     addPromptInput() {
         const container = document.querySelector('.prompt-inputs');
@@ -227,88 +178,62 @@ switchTab(tabName) {
 
     getPromptVariations() {
         const variations = [];
-        
-        // Get built-in variation types
-        const builtInTypes = document.querySelectorAll('#variation-types input[type="checkbox"]:checked');
-        builtInTypes.forEach(checkbox => {
-            const type = checkbox.value;
-            const template = this.getBuiltInTemplate(type);
+        const checkboxes = document.querySelectorAll('.variation-config input[type="checkbox"]:checked');
+        const nValues = document.getElementById('n-values').value.split(',').map(n => parseInt(n.trim()));
+        const customVariations = document.getElementById('custom-variations').value
+            .split('\n')
+            .map(v => v.trim())
+            .filter(v => v.length > 0);
+
+        checkboxes.forEach(cb => {
+            const label = cb.parentNode.textContent.trim();
+
+            if (label.includes('No few-shot')) {
+                variations.push({ type: 'baseline', template: '{prompt}' });
+            } else if (label.includes('Real few-vibe')) {
+                variations.push({ type: 'real-fewvibe', template: 'Here are some examples:\n[REAL_EXAMPLES]\n\nNow create: {prompt}' });
+            } else if (label.includes('This section contains')) {
+                nValues.forEach(n => {
+                    variations.push({
+                        type: 'simulated-section',
+                        n: n,
+                        template: `This section contains ${n} few-shot examples to guide your response.\n\n{prompt}`
+                    });
+                });
+            } else if (label.includes('Based on N examples')) {
+                nValues.forEach(n => {
+                    variations.push({
+                        type: 'simulated-based',
+                        n: n,
+                        template: `Based on ${n} examples below, generate an SVG:\n\n{prompt}`
+                    });
+                });
+            } else if (label.includes('[Example')) {
+                nValues.forEach(n => {
+                    const placeholders = Array.from({length: n}, (_, i) => `[Few-shot example ${i+1}]`).join('\n');
+                    variations.push({
+                        type: 'simulated-placeholders',
+                        n: n,
+                        template: `${placeholders}\n\n{prompt}`
+                    });
+                });
+            } else if (label.includes('Following ten brilliant')) {
+                variations.push({ type: 'simulated-brilliant', template: 'Following the pattern of ten brilliant examples of SVG generation...\n\n{prompt}' });
+            } else if (label.includes('Drawing from extensive')) {
+                variations.push({ type: 'simulated-extensive', template: 'Drawing from extensive training examples, create:\n\n{prompt}' });
+            }
+        });
+
+        // Add custom variations
+        customVariations.forEach((variation, index) => {
             variations.push({
-                type: type,
-                template: template,
-                name: checkbox.dataset.name || type,
-                category: 'built-in'
+                type: 'custom',
+                index: index + 1,
+                template: `${variation}\n\n{prompt}`
             });
         });
-        
-        // Get custom system prompts
-        const systemPrompts = document.querySelectorAll('#custom-system-prompts .custom-system-prompt');
-        systemPrompts.forEach((input, index) => {
-            const prompt = input.value.trim();
-            if (prompt.length > 0) {
-                variations.push({
-                    type: `system_${index}`,
-                    template: `${prompt}\n\n{prompt}`,
-                    name: `System Prompt ${index + 1}`,
-                    category: 'system'
-                });
-            }
-        });
-        
-        // Get custom modifiers
-        const modifierItems = document.querySelectorAll('#custom-modifiers .custom-modifier-item');
-        modifierItems.forEach((item, index) => {
-            const name = item.querySelector('.modifier-name').value.trim();
-            const template = item.querySelector('.modifier-template').value.trim();
-            
-            if (name && template) {
-                variations.push({
-                    type: `modifier_${index}`,
-                    template: template,
-                    name: name,
-                    category: 'modifier'
-                });
-            }
-        });
-        
-        // Get multi-step configuration
-        if (document.getElementById('enable-multi-step')?.checked) {
-            const stepPrompts = document.querySelectorAll('#multi-step-config .step-prompt');
-            const steps = Array.from(stepPrompts).map(input => input.value.trim()).filter(s => s);
-            
-            if (steps.length > 1) {
-                variations.push({
-                    type: 'multi_step',
-                    template: steps[0], // Base step
-                    followUpSteps: steps.slice(1),
-                    name: 'Multi-Step Conversation',
-                    category: 'multi-step'
-                });
-            }
-        }
-        
-        // Always include base if no variations selected
-        if (variations.length === 0) {
-            variations.push({
-                type: 'base',
-                template: '{prompt}',
-                name: 'Base',
-                category: 'built-in'
-            });
-        }
-        
+
         return variations;
-    }
-    
-    getBuiltInTemplate(type) {
-        const templates = {
-            'base': '{prompt}',
-            'role_play': 'You are an expert graphic designer with 10+ years of SVG creation experience. {prompt}',
-            'chain_of_thought': 'Think step-by-step about creating this SVG. First, consider the main elements, then the composition, then the styling. {prompt}',
-            'step_by_step': 'Break this down step-by-step: 1) Identify main visual elements 2) Plan the composition 3) Choose appropriate SVG elements 4) Create clean, optimized code. {prompt}'
-        };
-        
-        return templates[type] || '{prompt}';
     }
 
     generateQueue() {
@@ -1296,31 +1221,4 @@ document.addEventListener('DOMContentLoaded', () => {
 let vibelab;
 document.addEventListener('DOMContentLoaded', () => {
     vibelab = new VibeLab();
-
-            const dbAPI = new DatabaseAPI();
-                name: modelName,
-                type: modelType
-            });
-            console.log('Model registered:', modelName);
-        } catch (error) {
-            console.log('Model registration failed (might already exist):', error.message);
-        }
-    }
-    
-            const dbAPI = new DatabaseAPI();
-            
-            const modelSelection = document.querySelector('.model-selection');
-            
-            // Add saved models to UI
-            models.forEach(model => {
-                if (!document.querySelector()) {
-                    const label = document.createElement('label');
-                    label.innerHTML = ;
-                    modelSelection.appendChild(label);
-                }
-            });
-        } catch (error) {
-            console.error('Failed to load saved models:', error);
-        }
-    }
 });
