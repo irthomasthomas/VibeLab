@@ -58,6 +58,40 @@ class VibeLab {
                 this.hideTemplateManager();
             }
         });
+        // Custom prompt modifier events
+        document.getElementById('add-system-prompt')?.addEventListener('click', () => {
+            const container = document.getElementById('custom-system-prompts');
+            const newItem = document.createElement('div');
+            newItem.className = 'custom-prompt-item';
+            newItem.innerHTML = `
+                <input type="text" class="custom-system-prompt" placeholder="e.g., You are a professional graphic designer with 15 years of experience..." />
+                <button type="button" class="remove-custom-prompt">×</button>
+            `;
+            newItem.querySelector('.remove-custom-prompt').addEventListener('click', () => newItem.remove());
+            container.appendChild(newItem);
+        });
+        
+        document.getElementById('add-modifier')?.addEventListener('click', () => {
+            const container = document.getElementById('custom-modifiers');
+            const newItem = document.createElement('div');
+            newItem.className = 'custom-modifier-item';
+            newItem.innerHTML = `
+                <label>Name:</label>
+                <input type="text" class="modifier-name" placeholder="e.g., Oxford Style" />
+                <label>Template:</label>
+                <textarea class="modifier-template" placeholder="e.g., Rewrite this prompt in the style of a professional from Oxford University: {prompt}"></textarea>
+                <button type="button" class="remove-modifier">×</button>
+            `;
+            newItem.querySelector('.remove-modifier').addEventListener('click', () => newItem.remove());
+            container.appendChild(newItem);
+        });
+        
+        // Multi-step toggle
+        document.getElementById('enable-multi-step')?.addEventListener('change', (e) => {
+            const config = document.getElementById('multi-step-config');
+            if (config) config.style.display = e.target.checked ? 'block' : 'none';
+        });
+
     }
 
 switchTab(tabName) {
