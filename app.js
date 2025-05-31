@@ -179,7 +179,7 @@ switchTab(tabName) {
     getPromptVariations() {
         const variations = [];
         const checkboxes = document.querySelectorAll('.variation-config input[type="checkbox"]:checked');
-        const nValues = document.getElementById('n-values').value.split(',').map(n => parseInt(n.trim()));
+        // const nValues = [1, 2, 3]; // Default values
         const customVariations = document.getElementById('custom-variations').value
             .split('\n')
             .map(v => v.trim())
