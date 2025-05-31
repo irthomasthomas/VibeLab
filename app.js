@@ -96,6 +96,7 @@ class VibeLab {
 
         // Results tab events
         document.getElementById('export-results').addEventListener('click', () => this.exportResults());
+        document.getElementById('migrate-data').addEventListener('click', () => this.migrateLocalStorageData());
         document.getElementById('save-experiment').addEventListener('click', () => this.saveExperiment());
         document.getElementById('load-experiment').addEventListener('click', () => this.loadExperiment());
         // Template management events
@@ -1497,4 +1498,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+
+    // Data Migration Methods
+    async migrateLocalStorageData() {
+        if (!confirm('This will migrate all localStorage data to the database. Continue?')) {
+            return;
+        }
+        
+        try {
+            const report = await this.migrationTool.migrateFromLocalStorage();
+            
+            let message = ;
+            message += ;
+            message += ;
+            message += ;
+            
+            if (report.errors.length > 0) {
+                message += ;
+                report.errors.forEach(err => {
+                    message += ;
+                });
+            }
+            
+            alert(message);
+            
+            // Refresh the experiment list
+            await this.listStoredExperiments();
+            
+        } catch (error) {
+            alert();
+            console.error('Migration error:', error);
+        }
+    }
+    
+    async exportCurrentExperiment() {
+        if (!this.currentExperiment) {
+            alert('No active experiment to export');
+            return;
+        }
+        
+        try {
+            const exportData = await this.migrationTool.exportExperimentData(this.currentExperiment.id);
+            this.migrationTool.downloadJSON(
+                exportData, 
+                
+            );
+        } catch (error) {
+            alert();
+        }
+    }
 });
