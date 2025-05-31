@@ -176,7 +176,7 @@ switchTab(tabName) {
         return Array.from(checkboxes).map(cb => cb.value);
     }
 
-    getPromptVariations() {
+        getPromptVariations() {
     const variations = [];
     const techniqueItems = document.querySelectorAll('#prompt-techniques-container .prompt-technique-item');
     
@@ -192,7 +192,7 @@ switchTab(tabName) {
         
         if (name && template) {
             variations.push({
-                type: name.toLowerCase().replace(/\s+/g, '_'), // Corrected: Using raw string feature or double escape for JS
+                type: name.toLowerCase().replace(/\s+/g, '_'), // JS regex: /\s+/g
                 name: name,
                 template: template
             });
@@ -210,25 +210,7 @@ switchTab(tabName) {
     }
     
     return variations;
-} else if (cb.value === 'sim-few') {
-                template = 'Based on previous examples, create: {prompt}';
-            } else if (cb.value === 'chain-thought') {
-                template = 'Think step by step: {prompt}';
-            }
-            
-            variations.push({
-                type: cb.value || 'custom',
-                template: template
-            });
-        });
-        
-        // Always include baseline
-        if (variations.length === 0) {
-            variations.push({ type: 'baseline', template: '{prompt}' });
-        }
-        
-        return variations;
-    }
+}
 
     generateQueue() {
         this.generationQueue = [];
@@ -303,6 +285,9 @@ switchTab(tabName) {
         document.getElementById('start-queue').disabled = true;
         document.getElementById('pause-queue').disabled = false;
         document.getElementById('queue-status').textContent = 'Generating...';
+        document.getElementById('start-queue').disabled = true;
+        document.getElementById('pause-queue').disabled = false;
+        document.getElementById('queue-status').textContent = 'Generating...';
 
         const maxParallel = parseInt(document.getElementById('max-parallel').value) || 3;
         const pendingItems = this.generationQueue.filter(item => item.status === 'pending');
@@ -335,11 +320,13 @@ switchTab(tabName) {
         queueItem.status = 'running';
         queueItem.progress = 10;
         this.updateQueueDisplay();
+        this.updateQueueDisplay();
 
         // Prepare the full prompt
         const fullPrompt = queueItem.variation.template.replace('{prompt}', queueItem.prompt);
 
         queueItem.progress = 30;
+        this.updateQueueDisplay();
         this.updateQueueDisplay();
 
         // Execute llm command
@@ -347,6 +334,7 @@ switchTab(tabName) {
             const result = await this.executeLLMCommand(queueItem.model, fullPrompt);
             queueItem.progress = 90;
         this.updateQueueDisplay();
+            this.updateQueueDisplay();
 
             // Extract SVG from result
             const svgContent = this.extractSVG(result);
