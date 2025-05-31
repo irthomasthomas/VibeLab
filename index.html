@@ -60,25 +60,59 @@
                 <div class="setup-section">
                                     <div class="setup-section">
                     <h3>Prompt Engineering Techniques</h3>
-                    <div id="variation-types" class="variation-config">
-                        <label><input type="checkbox" value="base" data-name="Baseline" checked> Baseline (No modification)</label>
-                        <label><input type="checkbox" value="role_play" data-name="Role-Play"> Role-Play (Expert persona)</label>
-                        <label><input type="checkbox" value="chain_of_thought" data-name="Chain of Thought"> Chain of Thought</label>
-                        <label><input type="checkbox" value="expert_persona" data-name="Expert Persona"> Expert SVG Developer</label>
-                        <label><input type="checkbox" value="step_by_step" data-name="Step-by-Step"> Step-by-Step Instructions</label>
-                        <label><input type="checkbox" value="constraint_focus" data-name="Constraint Focus"> Constraint Focus</label>
-                        <label><input type="checkbox" value="creative_inspiration" data-name="Creative"> Creative Inspiration</label>
-                        <label><input type="checkbox" value="few_shot" data-name="Few-Shot"> Few-Shot Examples</label>
+                    
+                    <!-- Built-in Techniques -->
+                    <div class="technique-section">
+                        <h4>Built-in Techniques</h4>
+                        <div id="variation-types" class="variation-config">
+                            <label><input type="checkbox" value="base" data-name="Baseline" checked> Baseline (No modification)</label>
+                            <label><input type="checkbox" value="role_play" data-name="Role-Play"> Role-Play Expert</label>
+                            <label><input type="checkbox" value="chain_of_thought" data-name="Chain of Thought"> Chain of Thought</label>
+                            <label><input type="checkbox" value="step_by_step" data-name="Step-by-Step"> Step-by-Step</label>
+                        </div>
                     </div>
-            <!-- Multi-Step Conversation Panel -->
-            <div class="setup-section">
-                <h3>Multi-Step Conversations</h3>
-                <div class="multi-step-config">
-                    <label><input type="checkbox" id="enable-multi-step"> Enable multi-step conversations</label>
-                    <div id="multi-step-options" style="display: none;">
-                        <label><input type="checkbox" id="auto-try-harder"> Auto "try harder" on poor results</label>
-                        <label><input type="checkbox" id="iterative-refinement"> Enable iterative refinement</label>
-                        <label>Max conversation steps: <input type="number" id="max-conversation-steps" value="3" min="1" max="10"></label>
+                    
+                    <!-- Custom System Prompts -->
+                    <div class="technique-section">
+                        <h4>Custom System Prompts</h4>
+                        <div id="custom-system-prompts">
+                            <div class="custom-prompt-item">
+                                <input type="text" class="custom-system-prompt" placeholder="e.g., You are a professional graphic designer with 15 years of experience..." />
+                                <button type="button" class="remove-custom-prompt">×</button>
+                            </div>
+                        </div>
+                        <button type="button" id="add-system-prompt" class="secondary-btn">+ Add System Prompt</button>
+                    </div>
+                    
+                    <!-- Custom Prompt Modifiers -->
+                    <div class="technique-section">
+                        <h4>Custom Prompt Modifiers</h4>
+                        <div id="custom-modifiers">
+                            <div class="custom-modifier-item">
+                                <label>Name:</label>
+                                <input type="text" class="modifier-name" placeholder="e.g., Oxford Style" />
+                                <label>Template:</label>
+                                <textarea class="modifier-template" placeholder="e.g., Rewrite this prompt in the style of a professional from Oxford University: {prompt}"></textarea>
+                                <button type="button" class="remove-modifier">×</button>
+                            </div>
+                        </div>
+                        <button type="button" id="add-modifier" class="secondary-btn">+ Add Custom Modifier</button>
+                    </div>
+                    
+                    <!-- Multi-step Prompting -->
+                    <div class="technique-section">
+                        <h4>Multi-Step Prompting</h4>
+                        <label><input type="checkbox" id="enable-multi-step"> Enable multi-step conversations</label>
+                        <div id="multi-step-config" style="display: none;">
+                            <div class="multi-step-item">
+                                <label>Step 1 (Base):</label>
+                                <input type="text" class="step-prompt" value="{prompt}" readonly />
+                                <label>Step 2:</label>
+                                <input type="text" class="step-prompt" placeholder="e.g., Try harder to make this more detailed" />
+                                <label>Step 3:</label>
+                                <input type="text" class="step-prompt" placeholder="e.g., Make it more visually appealing" />
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

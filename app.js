@@ -178,62 +178,88 @@ switchTab(tabName) {
 
     getPromptVariations() {
         const variations = [];
-        const checkboxes = document.querySelectorAll('.variation-config input[type="checkbox"]:checked');
-        const nValues = document.getElementById('n-values').value.split(',').map(n => parseInt(n.trim()));
-        const customVariations = document.getElementById('custom-variations').value
-            .split('\n')
-            .map(v => v.trim())
-            .filter(v => v.length > 0);
-
-        checkboxes.forEach(cb => {
-            const label = cb.parentNode.textContent.trim();
-
-            if (label.includes('No few-shot')) {
-                variations.push({ type: 'baseline', template: '{prompt}' });
-            } else if (label.includes('Real few-vibe')) {
-                variations.push({ type: 'real-fewvibe', template: 'Here are some examples:\n[REAL_EXAMPLES]\n\nNow create: {prompt}' });
-            } else if (label.includes('This section contains')) {
-                nValues.forEach(n => {
-                    variations.push({
-                        type: 'simulated-section',
-                        n: n,
-                        template: `This section contains ${n} few-shot examples to guide your response.\n\n{prompt}`
-                    });
-                });
-            } else if (label.includes('Based on N examples')) {
-                nValues.forEach(n => {
-                    variations.push({
-                        type: 'simulated-based',
-                        n: n,
-                        template: `Based on ${n} examples below, generate an SVG:\n\n{prompt}`
-                    });
-                });
-            } else if (label.includes('[Example')) {
-                nValues.forEach(n => {
-                    const placeholders = Array.from({length: n}, (_, i) => `[Few-shot example ${i+1}]`).join('\n');
-                    variations.push({
-                        type: 'simulated-placeholders',
-                        n: n,
-                        template: `${placeholders}\n\n{prompt}`
-                    });
-                });
-            } else if (label.includes('Following ten brilliant')) {
-                variations.push({ type: 'simulated-brilliant', template: 'Following the pattern of ten brilliant examples of SVG generation...\n\n{prompt}' });
-            } else if (label.includes('Drawing from extensive')) {
-                variations.push({ type: 'simulated-extensive', template: 'Drawing from extensive training examples, create:\n\n{prompt}' });
-            }
-        });
-
-        // Add custom variations
-        customVariations.forEach((variation, index) => {
+        
+        // Get built-in variation types
+        const builtInTypes = document.querySelectorAll('#variation-types input[type="checkbox"]:checked');
+        builtInTypes.forEach(checkbox => {
+            const type = checkbox.value;
+            const template = this.getBuiltInTemplate(type);
             variations.push({
-                type: 'custom',
-                index: index + 1,
-                template: `${variation}\n\n{prompt}`
+                type: type,
+                template: template,
+                name: checkbox.dataset.name || type,
+                category: 'built-in'
             });
         });
-
+        
+        // Get custom system prompts
+        const systemPrompts = document.querySelectorAll('#custom-system-prompts .custom-system-prompt');
+        systemPrompts.forEach((input, index) => {
+            const prompt = input.value.trim();
+            if (prompt.length > 0) {
+                variations.push({
+                    type: `system_${index}`,
+                    template: `${prompt}\n\n{prompt}`,
+                    name: `System Prompt ${index + 1}`,
+                    category: 'system'
+                });
+            }
+        });
+        
+        // Get custom modifiers
+        const modifierItems = document.querySelectorAll('#custom-modifiers .custom-modifier-item');
+        modifierItems.forEach((item, index) => {
+            const name = item.querySelector('.modifier-name').value.trim();
+            const template = item.querySelector('.modifier-template').value.trim();
+            
+            if (name && template) {
+                variations.push({
+                    type: `modifier_${index}`,
+                    template: template,
+                    name: name,
+                    category: 'modifier'
+                });
+            }
+        });
+        
+        // Get multi-step configuration
+        if (document.getElementById('enable-multi-step')?.checked) {
+            const stepPrompts = document.querySelectorAll('#multi-step-config .step-prompt');
+            const steps = Array.from(stepPrompts).map(input => input.value.trim()).filter(s => s);
+            
+            if (steps.length > 1) {
+                variations.push({
+                    type: 'multi_step',
+                    template: steps[0], // Base step
+                    followUpSteps: steps.slice(1),
+                    name: 'Multi-Step Conversation',
+                    category: 'multi-step'
+                });
+            }
+        }
+        
+        // Always include base if no variations selected
+        if (variations.length === 0) {
+            variations.push({
+                type: 'base',
+                template: '{prompt}',
+                name: 'Base',
+                category: 'built-in'
+            });
+        }
+        
         return variations;
+    }
+    
+    getBuiltInTemplate(type) {
+        const templates = {
+            'base': '{prompt}',
+            'role_play': 'You are an expert graphic designer with 10+ years of SVG creation experience. {prompt}',
+            'chain_of_thought': 'Think step-by-step about creating this SVG. First, consider the main elements, then the composition, then the styling. {prompt}',
+            'step_by_step': 'Break this down step-by-step: 1) Identify main visual elements 2) Plan the composition 3) Choose appropriate SVG elements 4) Create clean, optimized code. {prompt}'
+        };
+        
+        return templates[type] || '{prompt}';
     }
 
     generateQueue() {
