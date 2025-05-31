@@ -1,0 +1,43 @@
+<!-- Add this to the Setup tab in index.html -->
+<div class="setup-section">
+    <h3>LLM Consortium Models</h3>
+    <div class="consortium-config">
+        <p>Define a consortium of models that work together to produce optimized responses.</p>
+        
+        <div id="consortium-definition">
+            <label>Consortium Name: <input type="text" id="consortium-name" placeholder="e.g., quality-consortium"></label>
+            
+            <div class="consortium-models">
+                <h4>Member Models</h4>
+                <div id="consortium-members">
+                    <label><input type="checkbox" value="anthropic/claude-3-5-sonnet-20241022"> Claude 3.5 Sonnet</label>
+                    <label><input type="checkbox" value="gpt-4"> GPT-4</label>
+                    <label><input type="checkbox" value="openrouter/google/gemini-2.0-flash-exp:free"> Gemini 2.0 Flash</label>
+                </div>
+            </div>
+            
+            <div class="consortium-arbiter">
+                <h4>Arbiter Model (Judges Best Response)</h4>
+                <select id="consortium-arbiter">
+                    <option value="anthropic/claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                    <option value="gpt-4">GPT-4</option>
+                    <option value="openrouter/google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash</option>
+                </select>
+            </div>
+            
+            <div class="consortium-options">
+                <label>Max Iterations: <input type="number" id="consortium-max-iterations" value="3" min="1" max="10"></label>
+                <label>Confidence Threshold: <input type="number" id="consortium-confidence" value="0.8" min="0" max="1" step="0.1"></label>
+            </div>
+            
+            <button id="create-consortium" class="secondary-btn">Create Consortium</button>
+        </div>
+        
+        <div id="saved-consortiums">
+            <h4>Saved Consortiums</h4>
+            <div id="consortium-list">
+                <!-- Will be populated dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
