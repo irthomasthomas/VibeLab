@@ -58,24 +58,27 @@
                 </div>
 
                 <div class="setup-section">
-                    <h3>Prompt Variations</h3>
-                    <div class="variation-config">
-                        <label><input type="checkbox" checked> No few-shot (baseline)</label>
-                        <label><input type="checkbox" checked> Real few-shot examples</label>
-                        <label><input type="checkbox" checked> "This section contains N examples..."</label>
-                        <label><input type="checkbox" checked> "Based on N examples below..."</label>
-                        <label><input type="checkbox" checked> [Example 1][Example 2]...[Example N]</label>
-                        <label><input type="checkbox" checked> "Following ten brilliant examples..."</label>
-                        <label><input type="checkbox" checked> "Drawing from extensive training..."</label>
-
-                        <div class="n-values">
-                            <label>N values: <input type="text" value="3,5,10" id="n-values"></label>
+                                    <div class="setup-section">
+                    <h3>Prompt Engineering Techniques</h3>
+                    <div id="variation-types" class="variation-config">
+                        <label><input type="checkbox" value="base" data-name="Baseline" checked> Baseline (No modification)</label>
+                        <label><input type="checkbox" value="role_play" data-name="Role-Play"> Role-Play (Expert persona)</label>
+                        <label><input type="checkbox" value="chain_of_thought" data-name="Chain of Thought"> Chain of Thought</label>
+                        <label><input type="checkbox" value="expert_persona" data-name="Expert Persona"> Expert SVG Developer</label>
+                        <label><input type="checkbox" value="step_by_step" data-name="Step-by-Step"> Step-by-Step Instructions</label>
+                        <label><input type="checkbox" value="constraint_focus" data-name="Constraint Focus"> Constraint Focus</label>
+                        <label><input type="checkbox" value="creative_inspiration" data-name="Creative"> Creative Inspiration</label>
+                        <label><input type="checkbox" value="few_shot" data-name="Few-Shot"> Few-Shot Examples</label>
+                    </div>
+                    <details>
+                        <summary>Advanced Options</summary>
+                        <div class="advanced-variations">
+                            <label>SVGs per variation: <input type="number" id="svgs-per-var" value="4" min="1" max="20"></label>
+                            <label><input type="checkbox" id="skip-baseline"> Skip baseline (use variations only)</label>
                         </div>
+                    </details>
+                </div>
 
-                        <div class="custom-variations">
-                            <h4>Custom Variations</h4>
-                            <textarea id="custom-variations" placeholder="Enter custom few-shot variations, one per line"></textarea>
-                        </div>
                     </div>
                 </div>
 

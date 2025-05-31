@@ -1,58 +1,5 @@
 // VibeLab - Main Application Logic
 
-
-// Database Integration API
-class DatabaseAPI {
-    constructor(baseURL = 'http://localhost:8081') {
-        this.baseURL = baseURL;
-    }
-    
-    async createExperiment(experimentData) {
-        const response = await fetch(`${this.baseURL}/api/experiments`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(experimentData)
-        });
-        
-        if (!response.ok) throw new Error('Failed to create experiment');
-        return response.json();
-    }
-    
-    async getExperiment(experimentId) {
-        const response = await fetch(`${this.baseURL}/api/experiments/${experimentId}`);
-        if (!response.ok) throw new Error('Failed to get experiment');
-        return response.json();
-    }
-    
-    async listExperiments() {
-        const response = await fetch(`${this.baseURL}/api/experiments`);
-        if (!response.ok) throw new Error('Failed to list experiments');
-        return response.json();
-    }
-    
-    async saveRanking(rankingData) {
-        const response = await fetch(`${this.baseURL}/api/rankings`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(rankingData)
-        });
-        
-        if (!response.ok) throw new Error('Failed to save ranking');
-        return response.json();
-    }
-    
-    async registerModel(modelData) {
-        const response = await fetch(`${this.baseURL}/api/models`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(modelData)
-        });
-        
-        if (!response.ok) throw new Error('Failed to register model');
-        return response.json();
-    }
-}
-
 class VibeLab {
     constructor() {
         this.currentExperiment = null;
@@ -77,9 +24,9 @@ class VibeLab {
         });
 
         // Setup tab events
-        document.getElementById('add-prompt').addEventListener('click', () => this.addCustomPrompt());
+        document.getElementById('add-prompt').addEventListener('click', () => this.addPromptInput());
         document.getElementById('add-model').addEventListener('click', () => this.addCustomModel());
-        document.getElementById('add-prompt').addEventListener('click', () => this.addCustomPrompt());
+        document.getElementById('add-prompt').addEventListener('click', () => this.addPromptInput());
         document.getElementById('start-experiment').addEventListener('click', () => this.createExperiment());
 
         // Queue tab events
@@ -229,70 +176,65 @@ switchTab(tabName) {
         return Array.from(checkboxes).map(cb => cb.value);
     }
 
-getPromptVariations() {
-        getPromptVariations() {
-            const variations = [];
-        
-            // Get selected variation types from UI
-            const variationTypes = document.querySelectorAll('#variation-types input[type="checkbox"]:checked');
-        
-            variationTypes.forEach(checkbox => {
-                const type = checkbox.value;
-                const template = this.getVariationTemplate(type);
-                variations.push({
-                    type: type,
-                    template: template,
-                    name: checkbox.dataset.name || type
-                });
-            });
-        
-            // Always include base if no variations selected
-            if (variations.length === 0) {
-                variations.push({
-                    type: 'base',
-                    template: '{prompt}',
-                    name: 'Base'
-                });
-            }
-        
-            return variations;
-        }
-    
-        getVariationTemplate(type) {
-            const templates = {
-                'base': '{prompt}',
-                'role_play': 'You are an expert graphic designer with 10+ years of SVG creation experience. {prompt}',
-                'chain_of_thought': 'Think step-by-step about creating this SVG. First, consider the main elements, then the composition, then the styling. {prompt}',
-                'expert_persona': 'As a senior SVG developer who has created award-winning graphics, approach this with professional standards: {prompt}',
-                'step_by_step': 'Break this down step-by-step: 1) Identify main visual elements 2) Plan the composition 3) Choose appropriate SVG elements 4) Create clean, optimized code. {prompt}',
-                'constraint_focus': 'Focus on creating clean, minimal SVG code with optimal performance. Avoid unnecessary complexity. {prompt}',
-                'creative_inspiration': 'Draw inspiration from modern graphic design principles. Make it visually striking and memorable. {prompt}',
-                'few_shot': 'Here are examples of excellent SVG creation:\nExample 1: Simple shapes with clean paths\nExample 2: Proper use of viewBox and scaling\nExample 3: Effective color schemes\n\nNow create: {prompt}'
-            };
-        
-            return templates[type] || '{prompt}';
-        }
-    
-        // Enhanced getPrompts function
-        getPrompts() {
-            const promptInputs = document.querySelectorAll('#dynamic-prompts .prompt-input');
-            const prompts = [];
+    getPromptVariations() {
+        const variations = [];
+        const checkboxes = document.querySelectorAll('.variation-config input[type="checkbox"]:checked');
+        const nValues = document.getElementById('n-values').value.split(',').map(n => parseInt(n.trim()));
+        const customVariations = document.getElementById('custom-variations').value
+            .split('\n')
+            .map(v => v.trim())
+            .filter(v => v.length > 0);
 
-            promptInputs.forEach((input) => {
-                const value = input.value.trim();
-                if (value.length > 0) {
-                    const wrapper = input.closest('.prompt-input-wrapper');
-                    const animatedCheckbox = wrapper.querySelector('.animated-checkbox');
-                    prompts.push({
-                        text: value,
-                        animated: animatedCheckbox ? animatedCheckbox.checked : false
+        checkboxes.forEach(cb => {
+            const label = cb.parentNode.textContent.trim();
+
+            if (label.includes('No few-shot')) {
+                variations.push({ type: 'baseline', template: '{prompt}' });
+            } else if (label.includes('Real few-vibe')) {
+                variations.push({ type: 'real-fewvibe', template: 'Here are some examples:\n[REAL_EXAMPLES]\n\nNow create: {prompt}' });
+            } else if (label.includes('This section contains')) {
+                nValues.forEach(n => {
+                    variations.push({
+                        type: 'simulated-section',
+                        n: n,
+                        template: `This section contains ${n} few-shot examples to guide your response.\n\n{prompt}`
                     });
-                }
-            });
+                });
+            } else if (label.includes('Based on N examples')) {
+                nValues.forEach(n => {
+                    variations.push({
+                        type: 'simulated-based',
+                        n: n,
+                        template: `Based on ${n} examples below, generate an SVG:\n\n{prompt}`
+                    });
+                });
+            } else if (label.includes('[Example')) {
+                nValues.forEach(n => {
+                    const placeholders = Array.from({length: n}, (_, i) => `[Few-shot example ${i+1}]`).join('\n');
+                    variations.push({
+                        type: 'simulated-placeholders',
+                        n: n,
+                        template: `${placeholders}\n\n{prompt}`
+                    });
+                });
+            } else if (label.includes('Following ten brilliant')) {
+                variations.push({ type: 'simulated-brilliant', template: 'Following the pattern of ten brilliant examples of SVG generation...\n\n{prompt}' });
+            } else if (label.includes('Drawing from extensive')) {
+                variations.push({ type: 'simulated-extensive', template: 'Drawing from extensive training examples, create:\n\n{prompt}' });
+            }
+        });
 
-            return prompts;
-        }
-    EOF; sleep 2
+        // Add custom variations
+        customVariations.forEach((variation, index) => {
+            variations.push({
+                type: 'custom',
+                index: index + 1,
+                template: `${variation}\n\n{prompt}`
+            });
+        });
+
+        return variations;
+    }
 
     generateQueue() {
         this.generationQueue = [];
@@ -360,49 +302,32 @@ getPromptVariations() {
         return variation.type;
     }
 
-        async startGeneration() {
+    async startGeneration() {
         if (this.isGenerating) return;
-        
+
         this.isGenerating = true;
         document.getElementById('start-queue').disabled = true;
         document.getElementById('pause-queue').disabled = false;
         document.getElementById('queue-status').textContent = 'Generating...';
-        
+        document.getElementById('start-queue').disabled = true;
+        document.getElementById('pause-queue').disabled = false;
+        document.getElementById('queue-status').textContent = 'Generating...';
+
         const maxParallel = parseInt(document.getElementById('max-parallel').value) || 3;
         const pendingItems = this.generationQueue.filter(item => item.status === 'pending');
-        
-        // Create a pool of workers for true parallel execution
-        const executeWithLimit = async (items, limit) => {
-            const executing = [];
-            for (const item of items) {
-                if (!this.isGenerating) break;
-                
-                const promise = this.generateSVG(item).catch(error => {
-                    console.error('Generation error:', error);
-                    item.status = 'error';
-                    item.error = error.message;
-                }).then(() => {
-                    executing.splice(executing.indexOf(promise), 1);
-                });
-                
-                executing.push(promise);
-                
-                if (executing.length >= limit) {
-                    await Promise.race(executing);
-                }
-            }
-            await Promise.all(executing);
-        };
-        
-        await executeWithLimit(pendingItems, maxParallel);
-        
-        if (this.isGenerating) {
-            this.isGenerating = false;
-            document.getElementById('start-queue').disabled = false;
-            document.getElementById('pause-queue').disabled = true;
-            document.getElementById('queue-status').textContent = 'Generation complete';
+
+        // Process items in parallel batches
+        for (let i = 0; i < pendingItems.length && this.isGenerating; i += maxParallel) {
+            const batch = pendingItems.slice(i, i + maxParallel);
+            const promises = batch.map(item => this.generateSVG(item).catch(error => {
+                console.error('Generation error:', error);
+                item.status = 'error';
+                item.error = error.message;
+            }));
+
+            await Promise.all(promises);
+            this.updateQueueDisplay();
         }
-    }
 
         if (this.isGenerating) {
             this.isGenerating = false;
@@ -419,25 +344,21 @@ getPromptVariations() {
         queueItem.status = 'running';
         queueItem.progress = 10;
         this.updateQueueDisplay();
+        this.updateQueueDisplay();
 
         // Prepare the full prompt
         const fullPrompt = queueItem.variation.template.replace('{prompt}', queueItem.prompt);
 
         queueItem.progress = 30;
         this.updateQueueDisplay();
+        this.updateQueueDisplay();
 
         // Execute llm command
         try {
-            // Add experiment_id to request if available
-            const requestBody = {};
-            if (this.currentExperiment && this.currentExperiment.id) {
-                requestBody.experiment_id = this.currentExperiment.id;
-                requestBody.prompt_type = queueItem.variation.type || 'base';
-            }
-            
-            const result = await this.executeLLMCommand(queueItem.model, fullPrompt, requestBody);
+            const result = await this.executeLLMCommand(queueItem.model, fullPrompt);
             queueItem.progress = 90;
         this.updateQueueDisplay();
+            this.updateQueueDisplay();
 
             // Extract SVG from result
             const svgContent = this.extractSVG(result);
@@ -1306,152 +1227,4 @@ document.addEventListener('DOMContentLoaded', () => {
 let vibelab;
 document.addEventListener('DOMContentLoaded', () => {
     vibelab = new VibeLab();
-    // Experiment Management Functions
-    async loadExperiment() {
-        try {
-            const dbAPI = new DatabaseAPI();
-            const experiments = await dbAPI.listExperiments();
-            
-            if (experiments.length === 0) {
-                alert('No experiments found in database');
-                return;
-            }
-            
-            // Create a simple selection dialog
-            const experimentList = experiments.map(exp => 
-                `${exp.id}: ${exp.name} (${exp.created_at})`
-            ).join('\n');
-            
-            const selected = prompt(`Select experiment:\n\n${experimentList}\n\nEnter experiment ID:`);
-            
-            if (selected) {
-                const experiment = await dbAPI.getExperiment(selected);
-                this.currentExperiment = {
-                    id: experiment.id,
-                    name: experiment.name,
-                    created: experiment.created_at,
-                    ...experiment.config
-                };
-                
-                // Update UI
-                document.getElementById('experiment-name').value = experiment.name;
-                document.getElementById('queue-status').textContent = 
-                    `Loaded experiment: ${experiment.name}`;
-                
-                this.updateExperimentOverview();
-            }
-        } catch (error) {
-            alert(`Failed to load experiment: ${error.message}`);
-            console.error('Load experiment error:', error);
-        }
-    }
-    
-    async saveExperiment() {
-        if (!this.currentExperiment) {
-            alert('No active experiment to save');
-            return;
-        }
-        
-        try {
-            // Save rankings to database
-            const dbAPI = new DatabaseAPI();
-            
-            for (const result of this.currentExperiment.results) {
-                if (result.rank !== null) {
-                    await dbAPI.saveRanking({
-                        experiment_id: this.currentExperiment.id,
-                        generation_id: result.id,
-                        rank: result.rank,
-                        evaluator_id: 'user'
-                    });
-                }
-            }
-            
-            alert('Experiment saved successfully!');
-        } catch (error) {
-            alert(`Failed to save experiment: ${error.message}`);
-            console.error('Save experiment error:', error);
-        }
-    }
-    
-    async listStoredExperiments() {
-        try {
-            const dbAPI = new DatabaseAPI();
-            const experiments = await dbAPI.listExperiments();
-            
-            const experimentGrid = document.getElementById('experiment-grid');
-            experimentGrid.innerHTML = '';
-            
-            experiments.forEach(exp => {
-                const expDiv = document.createElement('div');
-                expDiv.className = 'experiment-item';
-                expDiv.innerHTML = `
-                    <h4>${exp.name}</h4>
-                    <p>Created: ${new Date(exp.created_at).toLocaleDateString()}</p>
-                    <p>Status: ${exp.status}</p>
-                    <button onclick="vibelab.loadExperimentById('${exp.id}')">Load</button>
-                `;
-                experimentGrid.appendChild(expDiv);
-            });
-        } catch (error) {
-            console.error('Failed to list experiments:', error);
-        }
-    }
-    
-    async loadExperimentById(experimentId) {
-        try {
-            const dbAPI = new DatabaseAPI();
-            const experiment = await dbAPI.getExperiment(experimentId);
-            
-            this.currentExperiment = {
-                id: experiment.id,
-                name: experiment.name,
-                created: experiment.created_at,
-                ...experiment.config
-            };
-            
-            // Update UI
-            document.getElementById('experiment-name').value = experiment.name;
-            document.getElementById('queue-status').textContent = 
-                `Loaded experiment: ${experiment.name}`;
-            
-            this.switchTab('setup');
-            this.updateExperimentOverview();
-        } catch (error) {
-            alert(`Failed to load experiment: ${error.message}`);
-        }
-    }
-
-    addCustomPrompt() {
-        const promptList = document.getElementById('dynamic-prompts');
-        
-        // Create wrapper for prompt input
-        const promptDiv = document.createElement('div');
-        promptDiv.className = 'prompt-input-wrapper';
-        promptDiv.innerHTML = `
-            <div class="prompt-with-controls">
-                <input type="text" class="prompt-input" placeholder="Enter your prompt (e.g., 'Create an SVG of a bicycle')" />
-                <div class="prompt-controls">
-                    <label><input type="checkbox" class="animated-checkbox" /> Animated</label>
-                    <button class="remove-prompt" onclick="this.closest('.prompt-input-wrapper').remove()">×</button>
-                </div>
-            </div>
-        `;
-        
-        promptList.appendChild(promptDiv);
-        
-        // Focus the new input
-        promptDiv.querySelector('.prompt-input').focus();
-    }
-    
-    // Initialize with one empty prompt
-    initializePrompts() {
-        const dynamicPrompts = document.getElementById('dynamic-prompts');
-        if (dynamicPrompts.children.length === 0) {
-            this.addCustomPrompt();
-        }
-    }
-
-
-
 });
