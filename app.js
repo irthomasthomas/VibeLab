@@ -177,17 +177,40 @@ switchTab(tabName) {
     }
 
     getPromptVariations() {
-        const variations = [];
-        const checkboxes = document.querySelectorAll('.variation-config input[type="checkbox"]:checked');
+    const variations = [];
+    const techniqueItems = document.querySelectorAll('#prompt-techniques-container .prompt-technique-item');
+    
+    techniqueItems.forEach(item => {
+        const isEnabled = item.querySelector('.technique-enabled').checked;
+        if (!isEnabled) return;
+
+        const nameInput = item.querySelector('.technique-name');
+        const templateInput = item.querySelector('.technique-template');
         
-        checkboxes.forEach(cb => {
-            const label = cb.parentNode.textContent.trim();
-            let template = '{prompt}';
-            
-            // Map checkbox values to templates
-            if (cb.value === 'real-few') {
-                template = "Here are some examples: [EXAMPLES]. Now create: {prompt}";
-            } else if (cb.value === 'sim-few') {
+        const name = nameInput ? nameInput.value.trim() : 'custom';
+        const template = templateInput ? templateInput.value.trim() : '{prompt}';
+        
+        if (name && template) {
+            variations.push({
+                type: name.toLowerCase().replace(/\s+/g, '_'), // Corrected: Using raw string feature or double escape for JS
+                name: name,
+                template: template
+            });
+        }
+    });
+
+    const baselineExists = variations.some(v => v.type === 'baseline');
+    if (variations.length === 0 || !baselineExists) {
+        const baselineCheckbox = document.querySelector('#prompt-techniques-container .prompt-technique-item input[value="base"].technique-enabled');
+        if (!baselineCheckbox || baselineCheckbox.checked || variations.length === 0) {
+             if (!baselineExists) { 
+                variations.push({ type: 'baseline', name: 'Baseline', template: '{prompt}' });
+            }
+        }
+    }
+    
+    return variations;
+} else if (cb.value === 'sim-few') {
                 template = 'Based on previous examples, create: {prompt}';
             } else if (cb.value === 'chain-thought') {
                 template = 'Think step by step: {prompt}';
