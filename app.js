@@ -179,60 +179,34 @@ switchTab(tabName) {
     getPromptVariations() {
         const variations = [];
         const checkboxes = document.querySelectorAll('.variation-config input[type="checkbox"]:checked');
-        // const nValues = [1, 2, 3]; // Default values
-        const customVariations = document.getElementById('custom-variations').value
-            .split('\n')
-            .map(v => v.trim())
-            .filter(v => v.length > 0);
-
+        
         checkboxes.forEach(cb => {
             const label = cb.parentNode.textContent.trim();
+            let template = '{prompt}';
+            
+            // Map checkbox values to templates
+            if (cb.value === 'real-few') {
+                template = 'Here are some examples:
+[EXAMPLES]
 
-            if (label.includes('No few-shot')) {
-                variations.push({ type: 'baseline', template: '{prompt}' });
-            } else if (label.includes('Real few-vibe')) {
-                variations.push({ type: 'real-fewvibe', template: 'Here are some examples:\n[REAL_EXAMPLES]\n\nNow create: {prompt}' });
-            } else if (label.includes('This section contains')) {
-                nValues.forEach(n => {
-                    variations.push({
-                        type: 'simulated-section',
-                        n: n,
-                        template: `This section contains ${n} few-shot examples to guide your response.\n\n{prompt}`
-                    });
-                });
-            } else if (label.includes('Based on N examples')) {
-                nValues.forEach(n => {
-                    variations.push({
-                        type: 'simulated-based',
-                        n: n,
-                        template: `Based on ${n} examples below, generate an SVG:\n\n{prompt}`
-                    });
-                });
-            } else if (label.includes('[Example')) {
-                nValues.forEach(n => {
-                    const placeholders = Array.from({length: n}, (_, i) => `[Few-shot example ${i+1}]`).join('\n');
-                    variations.push({
-                        type: 'simulated-placeholders',
-                        n: n,
-                        template: `${placeholders}\n\n{prompt}`
-                    });
-                });
-            } else if (label.includes('Following ten brilliant')) {
-                variations.push({ type: 'simulated-brilliant', template: 'Following the pattern of ten brilliant examples of SVG generation...\n\n{prompt}' });
-            } else if (label.includes('Drawing from extensive')) {
-                variations.push({ type: 'simulated-extensive', template: 'Drawing from extensive training examples, create:\n\n{prompt}' });
+Now create: {prompt}';
+            } else if (cb.value === 'sim-few') {
+                template = 'Based on previous examples, create: {prompt}';
+            } else if (cb.value === 'chain-thought') {
+                template = 'Think step by step: {prompt}';
             }
-        });
-
-        // Add custom variations
-        customVariations.forEach((variation, index) => {
+            
             variations.push({
-                type: 'custom',
-                index: index + 1,
-                template: `${variation}\n\n{prompt}`
+                type: cb.value || 'custom',
+                template: template
             });
         });
-
+        
+        // Always include baseline
+        if (variations.length === 0) {
+            variations.push({ type: 'baseline', template: '{prompt}' });
+        }
+        
         return variations;
     }
 
