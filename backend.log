@@ -1,0 +1,57 @@
+INFO:__main__:Starting VibeLab Enhanced Backend on http://localhost:8081
+INFO:__main__:Features: LLM generation + Database persistence + Legacy compatibility
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /prompts
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/anthropic/claude-3-haiku", "prompt": "Create a simple SVG circle"}...
+INFO:__main__:Executing LLM command: llm -m openrouter/anthropic/claude-3-haiku Create a simple SVG circle... (Prompt length: 26)
+INFO:__main__:LLM command successful. Output length: 763, Time: 2588ms
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /api/experiments
+INFO:__main__:POST data for /api/experiments: {"name": "Backend Test Experiment", "description": "Testing enhanced backend"}...
+INFO:database_manager:Created experiment: Backend Test Experiment (28cdcfee-5730-4298-9dd7-1c09a4ce17b1)
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/anthropic/claude-3-haiku", "prompt": "Create an SVG of a red square", "experiment_id": "28cdcfee-5730-4298-9dd7-1c09a4ce17b1", "prompt_type": "base"}...
+INFO:__main__:Executing LLM command: llm -m openrouter/anthropic/claude-3-haiku Create an SVG of a red square... (Prompt length: 29)
+INFO:__main__:LLM command successful. Output length: 757, Time: 2713ms
+INFO:__main__:Saving generation for experiment_id: 28cdcfee-5730-4298-9dd7-1c09a4ce17b1
+INFO:__main__:Registered new model 'openrouter/anthropic/claude-3-haiku' with id: 03307d44-7d08-4b39-bdeb-dab6e05b96f0
+INFO:__main__:No prompt_id in payload. Creating new prompt. Type: 'base', Content: 'Create an SVG of a red square...'
+INFO:__main__:Successfully created prompt with id: d518d680-8abc-4615-891c-49964dd084e6, type: base
+INFO:__main__:Saved generation with id: 7df74690-ca24-4746-a921-682f4f296845
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /api/experiments/28cdcfee-5730-4298-9dd7-1c09a4ce17b1
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /api/models
+INFO:__main__:POST data for /api/models: {"name": "test-model-1", "type": "base"}...
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /api/models
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /prompts
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/anthropic/claude-3-haiku", "prompt": "Create a simple SVG circle"}...
+INFO:__main__:Executing LLM command: llm -m openrouter/anthropic/claude-3-haiku Create a simple SVG circle... (Prompt length: 26)
+INFO:__main__:LLM command successful. Output length: 628, Time: 2534ms
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /api/experiments
+INFO:__main__:POST data for /api/experiments: {"name": "Backend Test Experiment", "description": "Testing enhanced backend"}...
+INFO:database_manager:Created experiment: Backend Test Experiment (cd4ec6e5-79bd-49f2-90d0-0738fbf55f8c)
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/anthropic/claude-3-haiku", "prompt": "Create an SVG of a red square", "experiment_id": "cd4ec6e5-79bd-49f2-90d0-0738fbf55f8c", "prompt_type": "base"}...
+INFO:__main__:Executing LLM command: llm -m openrouter/anthropic/claude-3-haiku Create an SVG of a red square... (Prompt length: 29)
+INFO:__main__:LLM command successful. Output length: 658, Time: 2526ms
+INFO:__main__:Saving generation for experiment_id: cd4ec6e5-79bd-49f2-90d0-0738fbf55f8c
+INFO:__main__:No prompt_id in payload. Creating new prompt. Type: 'base', Content: 'Create an SVG of a red square...'
+INFO:__main__:Successfully created prompt with id: b72a1d55-7647-455e-80e0-ca93507f1003, type: base
+INFO:__main__:Saved generation with id: 87edecdd-8e01-4f7e-afdb-ccb75972cb44
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /api/experiments/cd4ec6e5-79bd-49f2-90d0-0738fbf55f8c
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /api/models
+INFO:__main__:POST data for /api/models: {"name": "test-model-1", "type": "base"}...
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /api/models
