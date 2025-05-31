@@ -186,10 +186,7 @@ switchTab(tabName) {
             
             // Map checkbox values to templates
             if (cb.value === 'real-few') {
-                template = 'Here are some examples:
-[EXAMPLES]
-
-Now create: {prompt}';
+                template = "Here are some examples: [EXAMPLES]. Now create: {prompt}";
             } else if (cb.value === 'sim-few') {
                 template = 'Based on previous examples, create: {prompt}';
             } else if (cb.value === 'chain-thought') {
