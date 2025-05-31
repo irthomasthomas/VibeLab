@@ -1147,3 +1147,39 @@ input:focus, textarea:focus, select:focus {
 .remove-prompt:hover {
     background: #cc0000;
 }
+/* --- PROMPT ENGINEERING UI V2 CSS --- */
+.prompt-technique-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 8px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+.prompt-technique-item input[type="checkbox"] {
+    margin-right: 5px;
+}
+.prompt-technique-item .technique-name {
+    flex-grow: 1;
+    min-width: 150px;
+}
+.prompt-technique-item .technique-template {
+    flex-grow: 3;
+    min-height: 40px; 
+    resize: vertical;
+}
+.prompt-technique-item .remove-technique {
+    padding: 3px 8px;
+    font-size: 0.9em;
+    background-color: #ffdddd;
+    border-color: #ffaaaa;
+    color: #d8000c;
+}
+.prompt-technique-item .technique-type {
+    font-size: 0.8em;
+    color: #777;
+    min-width: 60px; 
+    text-align: right;
+}

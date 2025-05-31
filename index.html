@@ -58,77 +58,34 @@
                 </div>
 
                 <div class="setup-section">
-                                    <div class="setup-section">
+                                                    <div class="setup-section">
                     <h3>Prompt Engineering Techniques</h3>
+                    <p>Define techniques using {prompt} as a placeholder for the base prompt.</p>
                     
-                    <!-- Built-in Techniques -->
-                    <div class="technique-section">
-                        <h4>Built-in Techniques</h4>
-                        <div id="variation-types" class="variation-config">
-                            <label><input type="checkbox" value="base" data-name="Baseline" checked> Baseline (No modification)</label>
-                            <label><input type="checkbox" value="role_play" data-name="Role-Play"> Role-Play Expert</label>
-                            <label><input type="checkbox" value="chain_of_thought" data-name="Chain of Thought"> Chain of Thought</label>
-                            <label><input type="checkbox" value="step_by_step" data-name="Step-by-Step"> Step-by-Step</label>
+                    <div id="prompt-techniques-container">
+                        <!-- Default techniques -->
+                        <div class="prompt-technique-item">
+                            <input type="checkbox" class="technique-enabled" value="base" checked>
+                            <input type="text" class="technique-name" value="Baseline" readonly>
+                            <textarea class="technique-template" readonly>{prompt}</textarea>
+                            <span class="technique-type">(built-in)</span>
+                        </div>
+                        <div class="prompt-technique-item">
+                            <input type="checkbox" class="technique-enabled" value="role_play">
+                            <input type="text" class="technique-name" value="Role-Play Expert">
+                            <textarea class="technique-template">You are an expert graphic designer with 10+ years of SVG creation experience. Create: {prompt}</textarea>
+                            <span class="technique-type">(editable)</span>
+                        </div>
+                         <div class="prompt-technique-item">
+                            <input type="checkbox" class="technique-enabled" value="chain_of_thought">
+                            <input type="text" class="technique-name" value="Chain of Thought">
+                            <textarea class="technique-template">Think step-by-step to create this. First, identify key elements. Second, plan composition. Third, define SVG structure. Finally, generate the SVG code for: {prompt}</textarea>
+                            <span class="technique-type">(editable)</span>
                         </div>
                     </div>
-                    
-                    <!-- Custom System Prompts -->
-                    <div class="technique-section">
-                        <h4>Custom System Prompts</h4>
-                        <div id="custom-system-prompts">
-                            <div class="custom-prompt-item">
-                                <input type="text" class="custom-system-prompt" placeholder="e.g., You are a professional graphic designer with 15 years of experience..." />
-                                <button type="button" class="remove-custom-prompt">×</button>
-                            </div>
-                        </div>
-                        <button type="button" id="add-system-prompt" class="secondary-btn">+ Add System Prompt</button>
-                    </div>
-                    
-                    <!-- Custom Prompt Modifiers -->
-                    <div class="technique-section">
-                        <h4>Custom Prompt Modifiers</h4>
-                        <div id="custom-modifiers">
-                            <div class="custom-modifier-item">
-                                <label>Name:</label>
-                                <input type="text" class="modifier-name" placeholder="e.g., Oxford Style" />
-                                <label>Template:</label>
-                                <textarea class="modifier-template" placeholder="e.g., Rewrite this prompt in the style of a professional from Oxford University: {prompt}"></textarea>
-                                <button type="button" class="remove-modifier">×</button>
-                            </div>
-                        </div>
-                        <button type="button" id="add-modifier" class="secondary-btn">+ Add Custom Modifier</button>
-                    </div>
-                    
-                    <!-- Multi-step Prompting -->
-                    <div class="technique-section">
-                        <h4>Multi-Step Prompting</h4>
-                        <label><input type="checkbox" id="enable-multi-step"> Enable multi-step conversations</label>
-                        <div id="multi-step-config" style="display: none;">
-                            <div class="multi-step-item">
-                                <label>Step 1 (Base):</label>
-                                <input type="text" class="step-prompt" value="{prompt}" readonly />
-                                <label>Step 2:</label>
-                                <input type="text" class="step-prompt" placeholder="e.g., Try harder to make this more detailed" />
-                                <label>Step 3:</label>
-                                <input type="text" class="step-prompt" placeholder="e.g., Make it more visually appealing" />
-                            </div>
-                        </div>
-                    </div>
+                    <button type="button" id="add-prompt-technique" class="secondary-btn">+ Add Custom Technique</button>
                 </div>
-            </div>
-
-                    <details>
-                        <summary>Advanced Options</summary>
-                        <div class="advanced-variations">
-                            <label><input type="checkbox" id="skip-baseline"> Skip baseline (use variations only)</label>
-                        </div>
-                    </details>
-                </div>
-
-                    </div>
-                </div>
-
-                <div class="setup-section">
+<div class="setup-section">
                     <h3>Generation Settings</h3>
                     <div class="gen-settings">
                         <label>SVGs per variation: <input type="number" id="svgs-per-var" value="4" min="1" max="10"></label>
