@@ -59,7 +59,7 @@ class VibeLab {
                 // Add to UI
                 const modelSelection = document.querySelector('.model-selection');
                 const label = document.createElement('label');
-                label.innerHTML = ;
+                label.innerHTML = `<input type="checkbox" value="${customModel}" checked> ${customModel}`;
                 modelSelection.appendChild(label);
                 
                 // Save to database
@@ -67,7 +67,28 @@ class VibeLab {
                 
                 // Clear input
                 document.getElementById('custom-model').value = '';
-            }
+            
+    
+    
+    async loadSavedModels() {
+        try {
+            const dbAPI = new DatabaseAPI();
+            const models = await dbAPI.getModels();
+            
+            const modelSelection = document.querySelector('.model-selection');
+            
+            models.forEach(model => {
+                if (!document.querySelector(`input[value="${model.name}"]`)) {
+                    const label = document.createElement('label');
+                    label.innerHTML = `<input type="checkbox" value="${model.name}"> ${model.name}`;
+                    modelSelection.appendChild(label);
+                }
+            });
+        } catch (error) {
+            console.error('Failed to load saved models:', error);
+        }
+    }
+}
         });
         // Custom prompt modifier events
         document.getElementById('add-system-prompt')?.addEventListener('click', () => {
@@ -1294,10 +1315,7 @@ let vibelab;
 document.addEventListener('DOMContentLoaded', () => {
     vibelab = new VibeLab();
 
-    async registerModel(modelName, modelType = 'base') {
-        try {
             const dbAPI = new DatabaseAPI();
-            await dbAPI.registerModel({
                 name: modelName,
                 type: modelType
             });
@@ -1307,10 +1325,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    async loadSavedModels() {
-        try {
             const dbAPI = new DatabaseAPI();
-            const models = await dbAPI.getModels();
             
             const modelSelection = document.querySelector('.model-selection');
             
