@@ -292,12 +292,26 @@ async def register_model(model: ModelInfo):
 
 # ==================== TEMPLATE ENDPOINTS (Compatibility) ====================
 
+
+async def get_templates():
+    """Get all prompt templates (compatibility endpoint)"""
+    try:
+        templates_data = prompt_manager.get_templates()
+        # Extract just the templates array for frontend compatibility
+        return {"success": True, "templates": templates_data["templates"]}
+    except Exception as e:
+        logger.error(f"Error loading templates: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+# Fixed template endpoints for FastAPI backend
+
 @app.get("/prompts")
 async def get_templates():
     """Get all prompt templates (compatibility endpoint)"""
     try:
-        templates = prompt_manager.get_templates()
-        return {"success": True, "templates": templates}
+        templates_data = prompt_manager.get_templates()
+        # Extract just the templates array for frontend compatibility
+        return {"success": True, "templates": templates_data["templates"]}
     except Exception as e:
         logger.error(f"Error loading templates: {str(e)}")
         return {"success": False, "error": str(e)}
@@ -307,8 +321,25 @@ async def save_template(request: Request):
     """Save a new template (compatibility endpoint)"""
     try:
         data = await request.json()
-        prompt_manager.save_template(data)
-        return {"success": True}
+        
+        # Extract required fields from the request data
+        name = data.get('name')
+        prompt = data.get('prompt')
+        tags = data.get('tags', [])
+        animated = data.get('animated', False)
+        
+        if not name or not prompt:
+            return {"success": False, "error": "Name and prompt are required"}
+        
+        # Use the new PromptManager API
+        result = prompt_manager.save_template(
+            name=name,
+            prompt=prompt,
+            tags=tags,
+            animated=animated
+        )
+        
+        return {"success": True, "template": result}
     except Exception as e:
         logger.error(f"Error saving template: {str(e)}")
         return {"success": False, "error": str(e)}
@@ -318,20 +349,102 @@ async def delete_template(request: Request):
     """Delete a template (compatibility endpoint)"""
     try:
         data = await request.json()
+        template_id = data.get('id')
         template_name = data.get('name')
-        if not template_name:
-            return {"success": False, "error": "Template name required"}
         
-        prompt_manager.delete_template(template_name)
+        # Support both ID and name-based deletion for backward compatibility
+        if template_id:
+            prompt_manager.delete_template(template_id)
+        elif template_name:
+            # Find template by name and delete by ID
+            templates_data = prompt_manager.get_templates()
+            template_to_delete = None
+            for template in templates_data["templates"]:
+                if template["name"] == template_name:
+                    template_to_delete = template
+                    break
+            
+            if template_to_delete:
+                prompt_manager.delete_template(template_to_delete["id"])
+            else:
+                return {"success": False, "error": f"Template '{template_name}' not found"}
+        else:
+            return {"success": False, "error": "Template ID or name required"}
+        
         return {"success": True}
     except Exception as e:
         logger.error(f"Error deleting template: {str(e)}")
         return {"success": False, "error": str(e)}
 
-# ==================== Main ====================
+@app.post("/models/register")
+async def register_model(request: Request):
+    """Register a model in the database before first use"""
+    try:
+        data = await request.json()
+        model_name = data.get('model')
+        
+        if not model_name:
+            return {"success": False, "error": "Model name required"}
+        
+        # Check if model exists in llm
+        try:
+            model_instance = llm.get_model(model_name)
+            if not model_instance:
+                return {"success": False, "error": f"Model '{model_name}' not available in llm"}
+        except Exception as e:
+            return {"success": False, "error": f"Failed to validate model: {str(e)}"}
+        
+        # Register in database
+        existing_model = db.get_model_by_name(model_name)
+        if not existing_model:
+            model_id = db.register_model(model_name)
+            logger.info(f"Registered new model '{model_name}' with id: {model_id}")
+            return {"success": True, "model_id": model_id, "message": "Model registered"}
+        else:
+            return {"success": True, "model_id": existing_model['id'], "message": "Model already registered"}
+        
+    except Exception as e:
+        logger.error(f"Error registering model: {str(e)}")
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
-    
-    logger.info("Starting VibeLab FastAPI Backend with LLM Python API on port 8081")
+    uvicorn.run(app, host="0.0.0.0", port=8081)
+
+@app.post("/models/register")
+
+@app.post("/models/register")
+async def register_model(request: Request):
+    """Register a model in the database before first use"""
+    try:
+        data = await request.json()
+        model_name = data.get('model')
+        
+        if not model_name:
+            return {"success": False, "error": "Model name required"}
+        
+        # Check if model exists in llm
+        try:
+            import llm
+            model_instance = llm.get_model(model_name)
+            if not model_instance:
+                return {"success": False, "error": f"Model '{model_name}' not available in llm"}
+        except Exception as e:
+            return {"success": False, "error": f"Failed to validate model: {str(e)}"}
+        
+        # Register in database
+        existing_model = db.get_model_by_name(model_name)
+        if not existing_model:
+            model_id = db.register_model(model_name)
+            logger.info(f"Registered new model '{model_name}' with id: {model_id}")
+            return {"success": True, "model_id": model_id, "message": "Model registered"}
+        else:
+            return {"success": True, "model_id": existing_model['id'], "message": "Model already registered"}
+        
+    except Exception as e:
+        logger.error(f"Error registering model: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8081)

@@ -31,9 +31,8 @@ class PromptManager:
             ORDER BY created_at DESC
         """
         
-        with self.db_manager.get_connection() as conn:
-            rows = conn.execute(query).fetchall()
-            templates = [self._row_to_template(row) for row in rows]
+        rows = self.db_manager.execute_query(query)
+        templates = [self._row_to_template(row) for row in rows]
         
         return {'templates': templates}
     
@@ -45,10 +44,9 @@ class PromptManager:
             WHERE id = ?
         """
         
-        with self.db_manager.get_connection() as conn:
-            rows = conn.execute(query, (template_id,)).fetchall()
-            if rows:
-                return self._row_to_template(rows[0])
+        rows = self.db_manager.execute_query(query, (template_id,))
+        if rows:
+            return self._row_to_template(rows[0])
         return None
     
     def save_template(self, name, prompt, tags=None, animated=False):
@@ -74,8 +72,7 @@ class PromptManager:
             'user'
         )
         
-        with self.db_manager.get_connection() as conn:
-            conn.execute(query, params)
+        self.db_manager.execute_query(query, params)
         
         return {
             'id': template_id,
@@ -123,18 +120,14 @@ class PromptManager:
             params.append(template_id)
             
             query = f"UPDATE templates SET {', '.join(updates)} WHERE id = ?"
-            
-            with self.db_manager.get_connection() as conn:
-                conn.execute(query, params)
+            self.db_manager.execute_query(query, params)
         
         return current
     
     def delete_template(self, template_id):
         """Delete a template"""
         query = "DELETE FROM templates WHERE id = ?"
-        
-        with self.db_manager.get_connection() as conn:
-            conn.execute(query, (template_id,))
+        self.db_manager.execute_query(query, (template_id,))
         return True
     
     # Legacy methods for backward compatibility

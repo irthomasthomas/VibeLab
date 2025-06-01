@@ -29,7 +29,6 @@ class VibeLab {
         // Setup tab events
         document.getElementById('add-prompt').addEventListener('click', () => this.addPromptInput());
         document.getElementById('add-model').addEventListener('click', () => this.addCustomModel());
-        document.getElementById('add-prompt-technique').addEventListener('click', () => this.addCustomTechnique());
         document.getElementById('start-experiment').addEventListener('click', () => this.createExperiment());
 
         // Queue tab events
@@ -119,19 +118,9 @@ switchTab(tabName) {
         customInput.value = '';
     }
 
-    async createExperiment() {
+    createExperiment() {
         const prompts = this.getPrompts();
         const models = this.getSelectedModels();
-        
-        // Register all models before creating experiment
-        if (models.length > 0) {
-            try {
-                await this.registerModels(models);
-            } catch (error) {
-                console.error('Model registration failed:', error);
-                // Continue anyway - backend will handle unregistered models
-            }
-        }
         const variations = this.getPromptVariations();
         const svgsPerVar = parseInt(document.getElementById('svgs-per-var').value) || 4;
         const skipBaseline = document.getElementById('skip-baseline').checked;
@@ -463,54 +452,10 @@ switchTab(tabName) {
     }
 
     clearQueue() {
-        if (!confirm('Are you sure you want to clear the generation queue? This action cannot be undone.')) {
-            return;
-        }
-
-        // Stop any ongoing generation
-        this.isGenerating = false;
-        
-        // Clear the queue
         this.generationQueue = [];
-        
-        // Update UI elements
         this.updateQueueDisplay();
         document.getElementById('start-queue').disabled = true;
-        document.getElementById('pause-queue').disabled = true;
-        document.getElementById('queue-status').textContent = 'Queue cleared. No experiment loaded.';
-        
-        // Clear results if they are tied to the current queue/experiment
-        if (this.currentExperiment) {
-            this.currentExperiment.results = [];
-            this.rankings = {};
-        }
-        
-        // Provide user feedback
-        if (typeof vlInfo === 'function') {
-            vlInfo('Queue Cleared', 'The generation queue has been successfully cleared.');
-        }
-    }
-
-    addCustomTechnique() {
-        const container = document.getElementById('prompt-techniques-container');
-        const techniqueItem = document.createElement('div');
-        techniqueItem.className = 'prompt-technique-item';
-        
-        // Generate unique ID for this custom technique
-        const uniqueId = 'custom-technique-' + Date.now();
-        
-        techniqueItem.innerHTML = `
-            <input type="checkbox" class="technique-enabled" id="${uniqueId}-enabled" checked>
-            <input type="text" class="technique-name" id="${uniqueId}-name" placeholder="Custom Technique Name" value="Custom Technique">
-            <textarea class="technique-template" id="${uniqueId}-template" placeholder="Enter your template. Use {prompt} where the base prompt should go.">{prompt}</textarea>
-            <button class="remove-technique" onclick="this.parentElement.remove()">×</button>
-            <span class="technique-type">(custom)</span>
-        `;
-        
-        container.appendChild(techniqueItem);
-        
-        // Focus on the name input for immediate editing
-        document.getElementById(`${uniqueId}-name`).focus();
+        document.getElementById('queue-status').textContent = 'Queue cleared';
     }
 
     updateEvaluationView() {

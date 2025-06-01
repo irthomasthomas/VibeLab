@@ -83,3 +83,19 @@ CREATE INDEX IF NOT EXISTS idx_generations_experiment ON generations(experiment_
 CREATE INDEX IF NOT EXISTS idx_generations_prompt ON generations(prompt_id);
 CREATE INDEX IF NOT EXISTS idx_rankings_experiment ON rankings(experiment_id);
 CREATE INDEX IF NOT EXISTS idx_prompts_experiment ON prompts(experiment_id);
+
+-- Templates table
+CREATE TABLE IF NOT EXISTS templates (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    prompt TEXT NOT NULL,
+    tags JSON,
+    animated BOOLEAN DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by TEXT DEFAULT 'system'
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_templates_name ON templates(name);
+CREATE INDEX IF NOT EXISTS idx_templates_created ON templates(created_at);
