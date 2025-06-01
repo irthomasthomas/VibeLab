@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+llm
+pydantic
+sqlite-utils

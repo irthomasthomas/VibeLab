@@ -9,6 +9,9 @@ class VibeLab {
         this.rankings = {};
         this.templates = [];
 
+        // Initialize API service
+        this.apiService = new ApiService();
+
         this.initializeEventListeners();
         this.loadSavedExperiments();
         this.loadTemplates();
@@ -224,6 +227,7 @@ switchTab(tabName) {
                             animated: promptObj.animated,
                             model,
                             variation,
+                            experiment_id: this.currentExperiment.id,
                             instance: i + 1,
                             status: 'pending',
                             progress: 0,
@@ -280,34 +284,60 @@ switchTab(tabName) {
         document.getElementById('start-queue').disabled = true;
         document.getElementById('pause-queue').disabled = false;
         document.getElementById('queue-status').textContent = 'Generating...';
-        document.getElementById('start-queue').disabled = true;
-        document.getElementById('pause-queue').disabled = false;
-        document.getElementById('queue-status').textContent = 'Generating...';
 
-        const maxParallel = parseInt(document.getElementById('max-parallel').value) || 3;
+        const maxParallel = parseInt(document.getElementById('max-parallel').value) || 8;
         const pendingItems = this.generationQueue.filter(item => item.status === 'pending');
-
-        // Process items in parallel batches
-        for (let i = 0; i < pendingItems.length && this.isGenerating; i += maxParallel) {
-            const batch = pendingItems.slice(i, i + maxParallel);
-            const promises = batch.map(item => this.generateSVG(item).catch(error => {
+        
+        // Streaming queue processing - start new requests as others complete
+        let runningPromises = new Set();
+        let currentIndex = 0;
+        
+        const processNext = async () => {
+            if (currentIndex >= pendingItems.length || !this.isGenerating) {
+                return;
+            }
+            
+            const item = pendingItems[currentIndex++];
+            const promise = this.generateSVG(item).catch(error => {
                 console.error('Generation error:', error);
                 item.status = 'error';
                 item.error = error.message;
-            }));
-
-            await Promise.all(promises);
-            this.updateQueueDisplay();
+            }).finally(() => {
+                runningPromises.delete(promise);
+                this.updateQueueDisplay();
+                // Start the next item immediately when one completes
+                processNext();
+            });
+            
+            runningPromises.add(promise);
+        };
+        
+        // Start initial batch
+        for (let i = 0; i < Math.min(maxParallel, pendingItems.length); i++) {
+            processNext();
         }
-
+        
+        // Wait for all operations to complete
+        const checkCompletion = () => {
+            return new Promise((resolve) => {
+                const check = () => {
+                    if (runningPromises.size === 0 || !this.isGenerating) {
+                        resolve();
+                    } else {
+                        setTimeout(check, 100);
+                    }
+                };
+                check();
+            });
+        };
+        
+        await checkCompletion();
+        
         if (this.isGenerating) {
             this.isGenerating = false;
             document.getElementById('start-queue').disabled = true;
             document.getElementById('pause-queue').disabled = true;
             document.getElementById('queue-status').textContent = 'Generation complete';
-            this.isGenerating = false;
-            document.getElementById('start-queue').disabled = true;
-            document.getElementById('pause-queue').disabled = true;
         }
     }
 
@@ -326,7 +356,7 @@ switchTab(tabName) {
 
         // Execute llm command
         try {
-            const result = await this.executeLLMCommand(queueItem.model, fullPrompt);
+            const result = await this.executeLLMCommand(queueItem.model, fullPrompt, queueItem);
             queueItem.progress = 90;
         this.updateQueueDisplay();
             this.updateQueueDisplay();
@@ -367,7 +397,8 @@ switchTab(tabName) {
     async executeLLMCommand(model, prompt) {
         // Call our Python backend that interfaces with llm CLI
         try {
-            const response = await fetch("http://localhost:8081/generate", {
+            // ApiService.makeRequest returns parsed JSON directly, not a Response object
+            const data = await this.apiService.makeRequest("/generate", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -378,12 +409,7 @@ switchTab(tabName) {
                 })
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-
+            // The data is already parsed JSON from ApiService
             if (!data.success) {
                 throw new Error(data.error || "Unknown error from LLM backend");
             }
@@ -395,7 +421,6 @@ switchTab(tabName) {
             throw new Error(`Failed to generate with ${model}: ${error.message}`);
         }
     }
-
     generatePlaceholderSVG(prompt) {
         // Generate a simple placeholder SVG for testing
         const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
@@ -593,6 +618,9 @@ switchTab(tabName) {
     resetRankings() {
         this.rankings = {};
         this.templates = [];
+
+        // Initialize API service
+        this.apiService = new ApiService();
         this.updateEvaluationView();
 
         // Update results table after reset
@@ -975,16 +1003,26 @@ switchTab(tabName) {
     // Template Management Methods
     async loadTemplates() {
         try {
-            const response = await fetch('http://localhost:8081/prompts');
-            const data = await response.json();
-            
-            if (data.success) {
-                this.templates = data.templates;
-                this.updateTemplateSelector();
+            const data = await this.apiService.makeRequest('/prompts');
+
+            // Check if data is an object and has the success property
+            if (data && typeof data === 'object' && data.hasOwnProperty('success')) {
+                if (data.success) {
+                    this.templates = data.templates;
+                    this.updateTemplateSelector();
+                    this.loadDefaultPrompts();
+                } else {
+                    // Handle the case where data.success is false
+                    console.error('Failed to load templates: API reported success:false.', data.error || 'Unknown error');
+                    this.loadDefaultPrompts();
+                }
+            } else {
+                // Handle the case where data is not in the expected format
+                console.error('Failed to load templates: Invalid response format from API. Expected JSON object with success property.', data);
                 this.loadDefaultPrompts();
             }
         } catch (error) {
-            console.error('Failed to load templates:', error);
+            console.error('Failed to load templates: Exception during API call or processing.', error);
             this.loadDefaultPrompts();
         }
     }
@@ -1130,7 +1168,7 @@ switchTab(tabName) {
         if (!confirm('Delete this template?')) return;
         
         try {
-            const response = await fetch(`http://localhost:8081/prompts/${templateId}`, {
+            const response = await this.apiService.makeRequest(`/prompts/${templateId}`, {
                 method: 'DELETE'
             });
             

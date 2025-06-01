@@ -13,36 +13,6 @@ This strategy prioritizes immediate stability for researchers, followed by found
 
 **Phase 0: Immediate Triage (Critical for Stability & Research Continuity)**
 
-*   **1. Fix Database `CHECK` Constraint Error:**
-    *   **Frontend (`app.js`):** Ensure `prompt_type` is correctly and consistently assigned to variations before sending data to the backend. The `type` property created in `getPromptVariations` needs to map to a valid database `prompt_type`.
-        ```javascript
-        // Inside getPromptVariations or when preparing data for createExperiment
-        // Example: ensure variation.type maps to a valid DB prompt_type
-        const uiType = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-        let dbPromptType = 'custom'; // Default
-        if (['baseline', 'role_play', 'chain_of_thought'].includes(uiType)) { // Match your DB valid types
-            dbPromptType = uiType;
-        }
-        variations.push({
-            type: uiType, // For UI/internal logic
-            name: name,
-            template: template,
-            prompt_type: dbPromptType // Explicitly set for the backend
-        });
-        ```
-    *   **Backend (`llm_backend.py`):** Add robust validation for `prompt_type` before database insertion within the `POST /generate` and `POST /api/prompts` handlers.
-        ```python
-        # In EnhancedVibeLab class, within do_POST for /generate or /api/prompts
-        VALID_PROMPT_TYPES = ['base', 'role_play', 'chain_of_thought', 'custom'] # Define valid types from your DB schema
-        prompt_type_from_payload = data.get('prompt_type', 'base') # or 'type' depending on payload key
-
-        if prompt_type_from_payload not in VALID_PROMPT_TYPES:
-            logger.error(f"Invalid prompt_type received: {prompt_type_from_payload}")
-            self.send_error_response(f"Invalid prompt_type: {prompt_type_from_payload}. Must be one of {VALID_PROMPT_TYPES}", 400)
-            return
-        # ... proceed with db.create_prompt using prompt_type_from_payload
-        ```
-
 *   **2. Basic Backend Stability & Responsiveness:**
     *   **Upgrade Server:** Replace `HTTPServer` with a more robust framework like **FastAPI** or **Flask**. FastAPI is recommended for its async capabilities and ease of use.
     *   **Replace `subprocess` LLM Calls with `llm` Python API:** Modify `execute_llm` to use the `llm` Python library directly for model interactions (e.g., `llm.get_model(model_alias).prompt(...)`). This offers better control, error handling, performance, and integration compared to shelling out to the CLI.
@@ -116,18 +86,7 @@ This strategy prioritizes immediate stability for researchers, followed by found
         #     return await loop.run_in_executor(executor, execute_llm_sync, model_alias, prompt_text, conversation_id)
         ```
 
-*   **3. Basic Security Hardening (Backend):**
-    *   **Restrict CORS:** In `do_OPTIONS` and response headers within your (new) FastAPI/Flask setup, configure CORS to allow only the specific origin of your frontend (e.g., `http://localhost:PORT_OF_FRONTEND_IF_DIFFERENT` or your development server's port). FastAPI has built-in CORS middleware.
-    *   **Content Security Policy (CSP):** Add a basic CSP header to mitigate XSS risks, e.g., `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;`. Adjust as needed. `unsafe-inline` for styles might be needed initially due to existing CSS practices but aim to remove it.
-
-*   **4. Improve Frontend Error Display:**
-    *   Enhance `alert()` messages with more specific error information passed from the backend or caught in frontend `try-catch` blocks. Consider a less obtrusive notification system.
-
 **Phase 1: Backend Modernization & Data Integrity**
-
-*   **1. Robust Backend Framework Implementation (FastAPI/Flask):**
-    *   Fully transition all existing backend logic to the chosen framework.
-    *   Implement proper routing, request validation (e.g., Pydantic with FastAPI), and structured error responses.
 
 *   **2. Leverage `llm` Python API for Model Interactions:**
     *   Fully transition LLM interactions from `subprocess` to the `llm` Python API (e.g., `llm.get_model(model_alias).prompt(...)` as detailed in Phase 0). This provides a consistent interface across different models supported by the `llm` tool and integrates better with Pythonic error handling and data structures.
@@ -162,27 +121,3 @@ This strategy prioritizes immediate stability for researchers, followed by found
     *   Replace direct `innerHTML` assignments with safer DOM creation methods (e.g., `document.createElement`, `appendChild`, `textContent`) or template literals where appropriate (or framework-specific templating).
     *   Consolidate redundant functions (e.g., different prompt adding methods).
 
-**Phase 3: Long-term Robustness & Scalability**
-
-*   **1. Comprehensive Testing:**
-    *   **Backend:** Implement unit and integration tests using Pytest.
-    *   **Frontend:** Implement unit tests for components and services (e.g., using Jest/Vitest).
-
-*   **2. Advanced Backend Task Queuing (Optional, for scale):**
-    *   If generation times are long or concurrency needs are high, consider a task queue like Celery with Redis/RabbitMQ. API calls would enqueue generation tasks, and workers would process them asynchronously.
-
-*   **3. Enhanced Logging & Monitoring:**
-    *   Implement structured logging on both frontend (e.g., sending errors to a backend endpoint or a dedicated logging service) and backend.
-
-*   **4. Frontend Performance Optimization:**
-    *   For large lists (queue, results, SVG grid), consider virtualization ("windowing") techniques to render only visible items.
-    *   Explore Web Workers for computationally intensive frontend tasks (e.g., complex statistics calculations if done client-side, though backend is often better).
-
-*   **5. Full Security Implementation:**
-    *   If the tool might be accessed by multiple users or over a network, implement proper authentication (e.g., JWT-based) and authorization.
-    *   Conduct a thorough security review, including input sanitization for all user-provided data to prevent XSS and other injection attacks.
-
-*   **6. Configuration Management (Backend):**
-    *   Use environment variables or configuration files (e.g., using `python-dotenv`) for settings like database URLs, LLM API keys (if using SDKs directly), etc.
-
-By following this phased approach, VibeLab can evolve into a more robust, maintainable, and scalable tool, better equipped to support the valuable research it facilitates. Prioritizing immediate stability and backend improvements will provide the quickest benefits to the researchers while laying the groundwork for a more modern frontend architecture.

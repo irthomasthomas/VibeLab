@@ -113,7 +113,7 @@
                             </div>
                             
                             <div class="consortium-options">
-                                <label>Max Iterations: <input type="number" id="consortium-max-iterations" value="3" min="1" max="10"></label>
+                                <label>Max Iterations: <input type="number" id="consortium-max-iterations" value="8" min="1" max="10"></label>
                                 <label>Confidence Threshold: <input type="number" id="consortium-confidence" value="0.8" min="0" max="1" step="0.1"></label>
                             </div>
                             
@@ -133,7 +133,7 @@
                     <div class="gen-settings">
                         <label>SVGs per variation: <input type="number" id="svgs-per-var" value="4" min="1" max="10"></label>
                         <label><input type="checkbox" id="skip-baseline"> Skip baseline variations</label>
-                        <label>Max parallel jobs: <input type="number" id="max-parallel" value="3" min="1" max="10"></label>
+                        <label>Max parallel jobs: <input type="number" id="max-parallel" value="8" min="1" max="10"></label>
                         <label>Experiment name: <input type="text" id="experiment-name" placeholder="Auto-generated if empty"></label>
                         <button id="start-experiment" class="primary-btn">Create Experiment</button>
                     </div>
@@ -228,6 +228,7 @@
     </div>
 
     <script src="error_display_system.js"></script>
+    <script src="ApiService.js"></script>
     <script src="app.js"></script>
 
     <!-- Template Management Modal -->
