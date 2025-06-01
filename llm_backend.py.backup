@@ -1,0 +1,402 @@
+#!/usr/bin/env python3
+"""
+VibeLab Enhanced Backend - Unified LLM + Database API
+Combines LLM generation with persistent database storage
+"""
+
+import json
+import subprocess
+import sys
+import time
+import uuid
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import parse_qs, urlparse
+from database_manager import DatabaseManager
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class EnhancedVibeLab(BaseHTTPRequestHandler):
+    
+    def __init__(self, *args, **kwargs):
+        self.db = DatabaseManager()
+        super().__init__(*args, **kwargs)
+    
+    def do_OPTIONS(self):
+        """Handle CORS preflight"""
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, PUT, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+    
+    def send_json_response(self, data, status=200):
+        """Send JSON response with CORS headers"""
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode('utf-8'))
+    
+    def send_error_response(self, error_msg, status=500):
+        """Send error response"""
+        # Log the full error on the server side as well
+        logger.error(f"Sending error response to client: {status} - {error_msg}")
+        self.send_json_response({
+            'success': False,
+            'error': error_msg
+        }, status)
+    
+    def parse_request_body(self):
+        """Parse JSON request body"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                return {}
+            
+            post_data = self.rfile.read(content_length)
+            return json.loads(post_data.decode('utf-8'))
+        except Exception as e:
+            logger.error(f"Error parsing request body: {e}")
+            raise ValueError(f"Invalid JSON in request body: {e}")
+    
+    def execute_llm(self, model, prompt, conversation_id=None):
+        """Execute llm CLI command with optional conversation support"""
+        try:
+            cmd = ['llm', '-m', model]
+            
+            if conversation_id:
+                cmd.extend(['-c', conversation_id])
+            
+            cmd.append(prompt)
+            
+            logger.info(f"Executing LLM command: {' '.join(cmd[:4])}... (Prompt length: {len(prompt)})")
+            
+            start_time = time.time()
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            generation_time = int((time.time() - start_time) * 1000)
+            
+            if result.returncode != 0:
+                logger.error(f"LLM command failed. STDERR: {result.stderr}")
+                raise Exception(f"LLM command failed: {result.stderr}")
+            
+            logger.info(f"LLM command successful. Output length: {len(result.stdout.strip())}, Time: {generation_time}ms")
+            return result.stdout.strip(), generation_time
+            
+        except subprocess.TimeoutExpired:
+            logger.error("LLM command timed out")
+            raise Exception("LLM command timed out after 2 minutes")
+        except FileNotFoundError:
+            logger.error("llm command not found")
+            raise Exception("llm command not found. Please ensure llm CLI is installed and in PATH")
+        except Exception as e:
+            logger.error(f"Error executing llm: {e}")
+            raise Exception(f"Error executing llm: {str(e)}")
+    
+    def do_GET(self):
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        logger.info(f"GET request received for: {path}")
+        # ... (rest of GET handler, unchanged)
+        query_params = parse_qs(parsed_url.query)
+        
+        try:
+            # Legacy prompts endpoint for compatibility
+            if path == '/prompts':
+                from prompt_manager import PromptManager
+                pm = PromptManager()
+                templates = pm.get_templates()
+                self.send_json_response({'success': True, 'templates': templates})
+                return
+            
+            # Database API endpoints
+            if path == '/api/experiments':
+                experiments = self.db.list_experiments()
+                self.send_json_response({'success': True, 'experiments': experiments})
+            
+            elif path.startswith('/api/experiments/'):
+                parts = path.split('/')
+                if len(parts) >= 4 and parts[3] == 'export':
+                    exp_id = query_params.get('id', [None])[0]
+                    if not exp_id:
+                        self.send_error_response("Missing experiment ID", 400)
+                        return
+                    
+                    export_data = self.db.export_experiment_data(exp_id)
+                    self.send_json_response({'success': True, 'data': export_data})
+                else:
+                    experiment_id = parts[3] if len(parts) > 3 else None
+                    if not experiment_id:
+                        self.send_error_response("Missing experiment ID", 400)
+                        return
+                    
+                    experiment = self.db.get_experiment(experiment_id)
+                    if experiment:
+                        prompts = self.db.get_prompts_by_experiment(experiment_id)
+                        generations = self.db.get_generations_by_experiment(experiment_id)
+                        rankings = self.db.get_rankings_by_experiment(experiment_id)
+                        
+                        self.send_json_response({
+                            'success': True,
+                            'experiment': experiment,
+                            'prompts': prompts,
+                            'generations': generations,
+                            'rankings': rankings
+                        })
+                    else:
+                        self.send_error_response("Experiment not found", 404)
+            
+            elif path == '/api/models':
+                models = self.db.get_models()
+                self.send_json_response({'success': True, 'models': models})
+            
+            else:
+                self.send_error_response("Endpoint not found", 404)
+                
+        except Exception as e:
+            logger.exception(f"GET error for path {path}")
+            self.send_error_response(str(e))
+
+    def do_POST(self):
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        logger.info(f"POST request received for: {path}")
+        
+        try:
+            data = self.parse_request_body()
+            logger.info(f"POST data for {path}: {json.dumps(data)[:200]}...") # Log snippet of data
+            
+            if path == '/generate':
+                model = data.get('model', 'claude-3-5-sonnet-20241022')
+                prompt_content = data.get('prompt', '') # Renamed to avoid clash
+                experiment_id = data.get('experiment_id')
+                conversation_id = data.get('conversation_id')
+                
+                if not prompt_content:
+                    self.send_error_response("Missing prompt", 400)
+                    return
+                
+                result, generation_time = self.execute_llm(model, prompt_content, conversation_id)
+                
+                if experiment_id:
+                    logger.info(f"Saving generation for experiment_id: {experiment_id}")
+                    existing_model = self.db.get_model_by_name(model)
+                    if not existing_model:
+                        model_id = self.db.register_model(model)
+                        logger.info(f"Registered new model '{model}' with id: {model_id}")
+                    else:
+                        model_id = existing_model['id']
+                    
+                    prompt_id_from_payload = data.get('prompt_id')
+                    if not prompt_id_from_payload:
+                        current_prompt_type = data.get('prompt_type', 'base')
+                        logger.info(f"No prompt_id in payload. Creating new prompt. Type: '{current_prompt_type}', Content: '{prompt_content[:50]}...'")
+                        
+                        # **** Critical section for CHECK constraint ****
+                        try:
+                            prompt_id_created = self.db.create_prompt(
+                                experiment_id=experiment_id,
+                                content=prompt_content,
+                                prompt_type=current_prompt_type 
+                            )
+                            logger.info(f"Successfully created prompt with id: {prompt_id_created}, type: {current_prompt_type}")
+                        except Exception as e_prompt:
+                            logger.exception(f"ERROR creating prompt in DB! Experiment_id: {experiment_id}, Type: '{current_prompt_type}', Content: '{prompt_content[:50]}...'")
+                            # Re-raise to be caught by outer try-except and send error response
+                            raise e_prompt 
+                        prompt_id_to_use = prompt_id_created
+                    else:
+                        prompt_id_to_use = prompt_id_from_payload
+                        logger.info(f"Using existing prompt_id from payload: {prompt_id_to_use}")
+
+                    generation_id = self.db.save_generation(
+                        experiment_id=experiment_id,
+                        prompt_id=prompt_id_to_use,
+                        model_id=model_id,
+                        output=result,
+                        svg_content=result if result.strip().startswith('<svg') else None,
+                        generation_time_ms=generation_time,
+                        conversation_id=conversation_id,
+                        metadata=data.get('metadata', {})
+                    )
+                    logger.info(f"Saved generation with id: {generation_id}")
+                    
+                    response = {
+                        'success': True, 'result': result, 'model': model,
+                        'generation_id': generation_id, 'prompt_id': prompt_id_to_use,
+                        'generation_time_ms': generation_time
+                    }
+                else:
+                    # Legacy response
+                    response = {'success': True, 'result': result, 'model': model}
+                
+                self.send_json_response(response)
+            
+            # ... (rest of POST handler, unchanged for brevity but assume logging for other paths too)
+            # Legacy prompts endpoint
+            elif path == '/prompts':
+                from prompt_manager import PromptManager
+                pm = PromptManager()
+                new_template = pm.save_template(
+                    name=data.get('name', ''),
+                    prompt=data.get('prompt', ''),
+                    tags=data.get('tags', []),
+                    animated=data.get('animated', False)
+                )
+                self.send_json_response({'success': True, 'template': new_template})
+            
+            # Database API endpoints
+            elif path == '/api/experiments':
+                experiment_id = self.db.create_experiment(
+                    name=data.get('name', 'Untitled Experiment'),
+                    description=data.get('description', ''),
+                    config=data.get('config', {})
+                )
+                
+                experiment = self.db.get_experiment(experiment_id)
+                self.send_json_response({'success': True, 'experiment': experiment})
+            
+            elif path == '/api/prompts':
+                prompt_id = self.db.create_prompt(
+                    experiment_id=data['experiment_id'],
+                    content=data['content'],
+                    prompt_type=data.get('type', 'base'),
+                    parent_prompt_id=data.get('parent_prompt_id'),
+                    modifier_used=data.get('modifier_used'),
+                    tags=data.get('tags', [])
+                )
+                
+                self.send_json_response({'success': True, 'prompt_id': prompt_id})
+            
+            elif path == '/api/models':
+                model_id = self.db.register_model(
+                    name=data['name'],
+                    model_type=data.get('type', 'base'),
+                    consortium_config=data.get('consortium_config')
+                )
+                
+                model = self.db.get_model_by_name(data['name'])
+                self.send_json_response({'success': True, 'model': model})
+            
+            elif path == '/api/rankings':
+                ranking_id = self.db.save_ranking(
+                    experiment_id=data['experiment_id'],
+                    prompt_id=data['prompt_id'],
+                    generation_id=data['generation_id'],
+                    rank=data['rank'],
+                    quality_score=data.get('quality_score'),
+                    evaluator_id=data.get('evaluator_id', 'human')
+                )
+                
+                self.send_json_response({'success': True, 'ranking_id': ranking_id})
+            
+            elif path == '/api/migrate':
+                localStorage_data = data.get('localStorage_data', {})
+                self.db.migrate_localStorage_data(localStorage_data)
+                
+                self.send_json_response({'success': True, 'message': 'Migration completed'})
+            
+            else:
+                self.send_error_response("Endpoint not found", 404)
+
+        except Exception as e:
+            logger.exception(f"POST error for path {path}") # Use logger.exception for stack trace
+            self.send_error_response(str(e))
+    
+    def do_PUT(self):
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        logger.info(f"PUT request received for: {path}")
+        # ... (rest of PUT handler, unchanged)
+        try:
+            data = self.parse_request_body()
+            
+            # Legacy prompts endpoint
+            if path.startswith('/prompts/'):
+                template_id = path.split('/')[-1]
+                from prompt_manager import PromptManager
+                pm = PromptManager()
+                
+                updated = pm.update_template(
+                    template_id,
+                    name=data.get('name'),
+                    prompt=data.get('prompt'),
+                    tags=data.get('tags'),
+                    animated=data.get('animated')
+                )
+                
+                if updated:
+                    self.send_json_response({'success': True, 'template': updated})
+                else:
+                    self.send_error_response("Template not found", 404)
+            
+            # Database API endpoints
+            elif path.startswith('/api/experiments/'):
+                experiment_id = path.split('/')[-1]
+                self.db.update_experiment(experiment_id, **data)
+                
+                experiment = self.db.get_experiment(experiment_id)
+                self.send_json_response({'success': True, 'experiment': experiment})
+            
+            else:
+                self.send_error_response("Endpoint not found", 404)
+                
+        except Exception as e:
+            logger.exception(f"PUT error for path {path}")
+            self.send_error_response(str(e))
+
+    def do_DELETE(self):
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        logger.info(f"DELETE request received for: {path}")
+        # ... (rest of DELETE handler, unchanged)
+        try:
+            # Legacy prompts endpoint
+            if path.startswith('/prompts/'):
+                template_id = path.split('/')[-1]
+                from prompt_manager import PromptManager
+                pm = PromptManager()
+                
+                success = pm.delete_template(template_id)
+                if success:
+                    self.send_json_response({'success': True})
+                else:
+                    self.send_error_response("Template not found", 404)
+            
+            else:
+                self.send_error_response("Endpoint not found", 404)
+                
+        except Exception as e:
+            logger.exception(f"DELETE error for path {path}")
+            self.send_error_response(str(e))
+
+    def log_message(self, format, *args):
+        # Use standard Python logger instead of BaseHTTPRequestHandler's default log_message
+        # to ensure it goes to backend.log and has the desired format.
+        # Example: "[10/Oct/2000 13:55:36] "GET /api/test HTTP/1.1" 200 -"
+        # We already log more detailed info at the start of do_GET, do_POST etc.
+        # So this can be minimal or suppressed if too verbose.
+        # logger.info(f"HTTP Request: {format % args}")
+        pass # Suppress default logging to avoid duplication with our custom logs
+
+def main():
+    port = 8081
+    server = HTTPServer(('localhost', port), EnhancedVibeLab)
+    logger.info(f"Starting VibeLab Enhanced Backend on http://localhost:{port}")
+    logger.info("Features: LLM generation + Database persistence + Legacy compatibility")
+    
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        logger.info("\nShutting down enhanced backend...")
+        server.shutdown()
+
+if __name__ == '__main__':
+    main()

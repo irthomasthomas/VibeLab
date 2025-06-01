@@ -26,6 +26,7 @@ class VibeLab {
         // Setup tab events
         document.getElementById('add-prompt').addEventListener('click', () => this.addPromptInput());
         document.getElementById('add-model').addEventListener('click', () => this.addCustomModel());
+        document.getElementById('add-prompt').addEventListener('click', () => this.addPromptInput());
         document.getElementById('start-experiment').addEventListener('click', () => this.createExperiment());
 
         // Queue tab events
@@ -125,12 +126,12 @@ switchTab(tabName) {
                               `Experiment_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}`;
 
         if (prompts.length === 0) {
-            vlWarning('Validation Error', 'Please enter at least one prompt');
+            alert('Please enter at least one prompt');
             return;
         }
 
         if (models.length === 0) {
-            vlWarning('Validation Error', 'Please select at least one model');
+            alert('Please select at least one model');
             return;
         }
 
@@ -388,7 +389,7 @@ switchTab(tabName) {
                 throw new Error(data.error || "Unknown error from LLM backend");
             }
 
-            return data.output;
+            return data.result;
 
         } catch (error) {
             console.error("LLM execution error:", error);
@@ -1194,3 +1195,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.vibeLab = new VibeLab();
 });
 
+// Initialize VibeLab when page loads
+let vibelab;
+document.addEventListener('DOMContentLoaded', () => {
+    vibelab = new VibeLab();
+});

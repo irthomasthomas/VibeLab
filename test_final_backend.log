@@ -1,0 +1,181 @@
+INFO:__main__:Starting VibeLab Enhanced Backend on http://localhost:8081
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /prompts
+127.0.0.1 - - [01/Jun/2025 16:00:38] "GET /prompts HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+127.0.0.1 - - [01/Jun/2025 16:00:59] "OPTIONS /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+127.0.0.1 - - [01/Jun/2025 16:00:59] "OPTIONS /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+127.0.0.1 - - [01/Jun/2025 16:00:59] "OPTIONS /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+127.0.0.1 - - [01/Jun/2025 16:00:59] "OPTIONS /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=3948, time=10664ms, conv_id=conv_1748790069_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:01:09] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=5009, time=12696ms, conv_id=conv_1748790082_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:01:22] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=4746, time=13362ms, conv_id=conv_1748790095_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:01:35] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=4385, time=11719ms, conv_id=conv_1748790107_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:01:47] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=5189, time=13860ms, conv_id=conv_1748790121_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:02:01] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=9556, time=21730ms, conv_id=conv_1748790143_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:02:23] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=7435, time=17710ms, conv_id=conv_1748790161_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:02:41] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=6878, time=16508ms, conv_id=conv_1748790177_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:02:57] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /prompts
+127.0.0.1 - - [01/Jun/2025 16:04:27] "GET /prompts HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=3825, time=11450ms, conv_id=conv_1748790293_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:04:53] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=2745, time=8889ms, conv_id=conv_1748790302_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:05:02] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=3998, time=11266ms, conv_id=conv_1748790314_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:05:14] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=0, time=1625ms, conv_id=conv_1748790315_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:05:15] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=9231, time=20191ms, conv_id=conv_1748790335_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:05:35] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=8793, time=20709ms, conv_id=conv_1748790356_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:05:56] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=8765, time=21329ms, conv_id=conv_1748790377_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:06:17] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=5508, time=15617ms, conv_id=conv_1748790393_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:06:33] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /prompts
+127.0.0.1 - - [01/Jun/2025 16:08:10] "GET /prompts HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=3171, time=8980ms, conv_id=conv_1748790517_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:08:37] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=4585, time=12348ms, conv_id=conv_1748790530_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:08:50] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=6312, time=14837ms, conv_id=conv_1748790544_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:09:04] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=4636, time=12893ms, conv_id=conv_1748790557_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:09:17] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=10010, time=21913ms, conv_id=conv_1748790579_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:09:39] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=12654, time=26539ms, conv_id=conv_1748790606_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:10:06] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=10888, time=25587ms, conv_id=conv_1748790631_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:10:31] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "You are an expert graphic designer with 10+ years of SVG creation experience. Create: SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=119, conv_id=None
+INFO:__main__:LLM success: output_len=5809, time=15444ms, conv_id=conv_1748790647_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:10:47] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /prompts
+127.0.0.1 - - [01/Jun/2025 16:19:51] "GET /prompts HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=5520, time=12707ms, conv_id=conv_1748791218_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:20:18] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None
+INFO:__main__:LLM success: output_len=6570, time=15465ms, conv_id=conv_1748791234_openrouter_google_gemini-2.5-flash-preview-05-20
+127.0.0.1 - - [01/Jun/2025 16:20:34] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/google/gemini-2.5-flash-preview-05-20", "prompt": "SVG of a pelican riding a bicycle"}...
+INFO:__main__:Executing LLM: model='openrouter/google/gemini-2.5-flash-preview-05-20', prompt_len=33, conv_id=None

@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS experiments (
 CREATE TABLE IF NOT EXISTS prompts (
     id TEXT PRIMARY KEY,
     experiment_id TEXT,
-    type TEXT,
+    type TEXT CHECK(type IN ('base', 'modified', 'system', 'multi_step')),
     content TEXT NOT NULL,
     parent_prompt_id TEXT,
     modifier_used TEXT,

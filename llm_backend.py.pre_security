@@ -170,31 +170,18 @@ class EnhancedVibeLab(BaseHTTPRequestHandler):
         super().__init__(*args, **kwargs)
     
     def do_OPTIONS(self):
-        """Handle CORS preflight with enhanced security"""
+        """Handle CORS preflight"""
         self.send_response(200)
-        # Restrict CORS to specific origin instead of wildcard
-        origin = self.headers.get('Origin', 'http://localhost:8080')
-        self.send_header('Access-Control-Allow-Origin', origin)
+        self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'POST, GET, PUT, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.send_header('Access-Control-Max-Age', '3600')
-        # Add security headers
-        self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('X-Frame-Options', 'DENY')
-        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*")
         self.end_headers()
     
     def send_json_response(self, data, status=200):
-        """Send JSON response with CORS and security headers"""
+        """Send JSON response with CORS headers"""
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
-        # Use specific origin instead of wildcard
-        origin = self.headers.get('Origin', 'http://localhost:8080')
-        self.send_header('Access-Control-Allow-Origin', origin)
-        # Add security headers
-        self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('X-Frame-Options', 'DENY')
-        self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*")
+        self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(json.dumps(data).encode('utf-8'))
     
@@ -327,7 +314,7 @@ class EnhancedVibeLab(BaseHTTPRequestHandler):
             elif path == '/prompts':
                 # Legacy prompt templates endpoint - now uses database
                 from prompt_manager import PromptManager
-                pm = PromptManager()
+                pm = PromptManager(db=self.db)
                 templates = pm.get_templates()
                 self.send_json_response({'success': True, 'templates': templates})
             
@@ -421,7 +408,7 @@ class EnhancedVibeLab(BaseHTTPRequestHandler):
             elif path == '/prompts':
                 # Legacy endpoint - return templates from PromptManager
                 from prompt_manager import PromptManager
-                pm = PromptManager()
+                pm = PromptManager(db=self.db)
                 templates = pm.get_templates()
                 self.send_json_response({'success': True, 'templates': templates})
             
@@ -443,7 +430,7 @@ class EnhancedVibeLab(BaseHTTPRequestHandler):
             if path == '/prompts':
                 # Update prompt templates
                 from prompt_manager import PromptManager
-                pm = PromptManager()
+                pm = PromptManager(db=self.db)
                 
                 action = data.get('action')
                 if action == 'add':
@@ -477,7 +464,7 @@ class EnhancedVibeLab(BaseHTTPRequestHandler):
                 # Delete prompt template
                 data = self.parse_request_body()
                 from prompt_manager import PromptManager
-                pm = PromptManager()
+                pm = PromptManager(db=self.db)
                 pm.delete_template(data['name'])
                 self.send_json_response({'success': True})
             

@@ -1,0 +1,101 @@
+INFO:__main__:Starting VibeLab Enhanced Backend on http://localhost:8081
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:GET request received for: /api/experiments
+127.0.0.1 - - [01/Jun/2025 15:32:34] "GET /api/experiments HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /api/experiments
+INFO:__main__:POST data for /api/experiments: {"name": "LLM Improvement Test", "description": "Testing improved LLM execution"}...
+INFO:database_manager:Created experiment: LLM Improvement Test (be7eadd8-1214-4c76-a123-12485ac5be9b)
+127.0.0.1 - - [01/Jun/2025 15:32:34] "POST /api/experiments HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/anthropic/claude-3-haiku", "prompt": "Generate a simple test response", "experiment_id": "be7eadd8-1214-4c76-a123-12485ac5be9b", "prompt_type": "test"}...
+INFO:__main__:Executing LLM: model='openrouter/anthropic/claude-3-haiku', prompt_len=31, conv_id=None
+INFO:__main__:LLM success: output_len=180, time=1632ms, conv_id=conv_1748788356_openrouter_anthropic_claude-3-haiku
+INFO:__main__:Saving generation for experiment_id: be7eadd8-1214-4c76-a123-12485ac5be9b
+INFO:__main__:Validating prompt_type: 'test' -> 'test'
+INFO:__main__:No prompt_id in payload. Creating new prompt. Type: 'test', Content: 'Generate a simple test response...'
+INFO:__main__:Successfully created prompt with id: 2932602c-e622-4148-8ff1-9768fb978cfa, type: test
+INFO:__main__:Saved generation with id: 1be5d73b-9cf1-41cb-8c11-1c2dbb10f677
+127.0.0.1 - - [01/Jun/2025 15:32:36] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /api/experiments
+INFO:__main__:POST data for /api/experiments: {"name": "Concurrent LLM Test", "description": "Testing concurrent LLM execution"}...
+INFO:database_manager:Created experiment: Concurrent LLM Test (88ba4c57-6bc1-4e55-8269-c4eadbf2d7c2)
+127.0.0.1 - - [01/Jun/2025 15:32:37] "POST /api/experiments HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/anthropic/claude-3-haiku", "prompt": "Worker 1: Generate a short response about concurrency testing", "experiment_id": "88ba4c57-6bc1-4e55-8269-c4eadbf2d7c2", "prompt_type": "con...
+INFO:__main__:Executing LLM: model='openrouter/anthropic/claude-3-haiku', prompt_len=61, conv_id=None
+INFO:__main__:LLM success: output_len=532, time=2549ms, conv_id=conv_1748788360_openrouter_anthropic_claude-3-haiku
+INFO:__main__:Saving generation for experiment_id: 88ba4c57-6bc1-4e55-8269-c4eadbf2d7c2
+INFO:__main__:Validating prompt_type: 'concurrent_test' -> 'concurrent_test'
+INFO:__main__:No prompt_id in payload. Creating new prompt. Type: 'concurrent_test', Content: 'Worker 1: Generate a short response about concurre...'
+INFO:__main__:Successfully created prompt with id: a6d5cea0-7bd5-4e40-85ae-78957e1503a3, type: concurrent_test
+INFO:__main__:Saved generation with id: ccb25cb2-b1a3-4ac5-afe8-38bfafa6450c
+127.0.0.1 - - [01/Jun/2025 15:32:40] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/anthropic/claude-3-haiku", "prompt": "Worker 0: Generate a short response about concurrency testing", "experiment_id": "88ba4c57-6bc1-4e55-8269-c4eadbf2d7c2", "prompt_type": "con...
+INFO:__main__:Executing LLM: model='openrouter/anthropic/claude-3-haiku', prompt_len=61, conv_id=None
+INFO:__main__:LLM success: output_len=533, time=1905ms, conv_id=conv_1748788362_openrouter_anthropic_claude-3-haiku
+INFO:__main__:Saving generation for experiment_id: 88ba4c57-6bc1-4e55-8269-c4eadbf2d7c2
+INFO:__main__:Validating prompt_type: 'concurrent_test' -> 'concurrent_test'
+INFO:__main__:No prompt_id in payload. Creating new prompt. Type: 'concurrent_test', Content: 'Worker 0: Generate a short response about concurre...'
+INFO:__main__:Successfully created prompt with id: d49ef0d9-a9b4-4dbc-8f9a-87e97249b56d, type: concurrent_test
+INFO:__main__:Saved generation with id: 4fe7b3c4-6c21-4439-8a50-08fa94f660e8
+127.0.0.1 - - [01/Jun/2025 15:32:42] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/anthropic/claude-3-haiku", "prompt": "Worker 2: Generate a short response about concurrency testing", "experiment_id": "88ba4c57-6bc1-4e55-8269-c4eadbf2d7c2", "prompt_type": "con...
+INFO:__main__:Executing LLM: model='openrouter/anthropic/claude-3-haiku', prompt_len=61, conv_id=None
+INFO:__main__:LLM success: output_len=681, time=2222ms, conv_id=conv_1748788364_openrouter_anthropic_claude-3-haiku
+INFO:__main__:Saving generation for experiment_id: 88ba4c57-6bc1-4e55-8269-c4eadbf2d7c2
+INFO:__main__:Validating prompt_type: 'concurrent_test' -> 'concurrent_test'
+INFO:__main__:No prompt_id in payload. Creating new prompt. Type: 'concurrent_test', Content: 'Worker 2: Generate a short response about concurre...'
+INFO:__main__:Successfully created prompt with id: 56c28938-1a63-491c-bfb9-1d24a618e1f2, type: concurrent_test
+INFO:__main__:Saved generation with id: 6c2b2caa-f83b-46bf-8da1-76dff119466d
+127.0.0.1 - - [01/Jun/2025 15:32:44] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "openrouter/anthropic/claude-3-haiku", "prompt": "Quick test response", "timeout": 30}...
+INFO:__main__:Executing LLM: model='openrouter/anthropic/claude-3-haiku', prompt_len=19, conv_id=None
+INFO:__main__:LLM success: output_len=50, time=2008ms, conv_id=conv_1748788367_openrouter_anthropic_claude-3-haiku
+127.0.0.1 - - [01/Jun/2025 15:32:47] "POST /generate HTTP/1.1" 200 -
+INFO:database_manager:Database initialized at data/vibelab_research.db
+INFO:__main__:POST request received for: /generate
+INFO:__main__:POST data for /generate: {"model": "nonexistent/invalid/model", "prompt": "This should fail"}...
+INFO:__main__:Executing LLM: model='nonexistent/invalid/model', prompt_len=16, conv_id=None
+ERROR:__main__:LLM command failed (code 1): Error: 'Unknown model: nonexistent/invalid/model'
+
+ERROR:__main__:LLM execution error: LLM command failed (code 1): Error: 'Unknown model: nonexistent/invalid/model'
+
+ERROR:__main__:LLM error: LLM command failed (code 1): Error: 'Unknown model: nonexistent/invalid/model'
+
+ERROR:__main__:Error in POST /generate: LLM execution failed: LLM command failed (code 1): Error: 'Unknown model: nonexistent/invalid/model'
+Traceback (most recent call last):
+  File "/home/thomas/Projects/Virtual_Few_Shot/vibelab-2/llm_backend.py", line 226, in execute_llm
+    output, gen_time, new_conv_id = self.llm_executor.execute_llm_sync(
+                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        model, prompt, conversation_id
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/thomas/Projects/Virtual_Few_Shot/vibelab-2/llm_backend.py", line 86, in execute_llm_sync
+    raise RuntimeError(error_msg)
+RuntimeError: LLM command failed (code 1): Error: 'Unknown model: nonexistent/invalid/model'
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/thomas/Projects/Virtual_Few_Shot/vibelab-2/llm_backend.py", line 261, in do_POST
+    output, generation_time = self.execute_llm(model, prompt, conversation_id)
+                              ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/thomas/Projects/Virtual_Few_Shot/vibelab-2/llm_backend.py", line 239, in execute_llm
+    raise Exception(f"LLM execution failed: {str(e)}")
+Exception: LLM execution failed: LLM command failed (code 1): Error: 'Unknown model: nonexistent/invalid/model'
+
+ERROR:__main__:Sending error response to client: 500 - LLM execution failed: LLM command failed (code 1): Error: 'Unknown model: nonexistent/invalid/model'
+
+127.0.0.1 - - [01/Jun/2025 15:32:48] "POST /generate HTTP/1.1" 500 -
