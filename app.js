@@ -176,41 +176,37 @@ switchTab(tabName) {
         return Array.from(checkboxes).map(cb => cb.value);
     }
 
-        getPromptVariations() {
-    const variations = [];
-    const techniqueItems = document.querySelectorAll('#prompt-techniques-container .prompt-technique-item');
-    
-    techniqueItems.forEach(item => {
-        const isEnabled = item.querySelector('.technique-enabled').checked;
-        if (!isEnabled) return;
-
+    getPromptVariations() {
+        const variations = [];
+        const techniqueItems = document.querySelectorAll('#prompt-techniques-container .prompt-technique-item');
+        techniqueItems.forEach(item => {
+        const isEnabledCheckbox = item.querySelector('.technique-enabled');
+        if (!isEnabledCheckbox || !isEnabledCheckbox.checked) return;
         const nameInput = item.querySelector('.technique-name');
         const templateInput = item.querySelector('.technique-template');
-        
-        const name = nameInput ? nameInput.value.trim() : 'custom';
+        const name = nameInput ? nameInput.value.trim() : 'custom_technique';
         const template = templateInput ? templateInput.value.trim() : '{prompt}';
-        
         if (name && template) {
-            variations.push({
-                type: name.toLowerCase().replace(/\s+/g, '_'), // JS regex: /\s+/g
-                name: name,
-                template: template
-            });
+        variations.push({
+        type: name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+        name: name,
+        template: template
+        });
         }
-    });
-
-    const baselineExists = variations.some(v => v.type === 'baseline');
-    if (variations.length === 0 || !baselineExists) {
+        });
+        const baselineExists = variations.some(v => v.type === 'baseline');
+        if (variations.length === 0) {
+        variations.push({ type: 'baseline', name: 'Baseline', template: '{prompt}' });
+        } else {
         const baselineCheckbox = document.querySelector('#prompt-techniques-container .prompt-technique-item input[value="base"].technique-enabled');
-        if (!baselineCheckbox || baselineCheckbox.checked || variations.length === 0) {
-             if (!baselineExists) { 
-                variations.push({ type: 'baseline', name: 'Baseline', template: '{prompt}' });
-            }
+        if (baselineCheckbox && baselineCheckbox.checked && !baselineExists) {
+        variations.push({ type: 'baseline', name: 'Baseline', template: '{prompt}' });
         }
-    }
-    
-    return variations;
-}
+        }
+        if (variations.length === 0) { // Final check if still empty\n
+        variations.push({ type: 'baseline', name: 'Baseline', template: '{prompt}' });
+        }
+        return variations;}
 
     generateQueue() {
         this.generationQueue = [];

@@ -126,4 +126,5 @@ class ConsortiumHandler {
         );
         
         //
-Aborted!; sleep 2
+    }
+}

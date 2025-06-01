@@ -1,7 +1,7 @@
 // Parallel Generation Fix for VibeLab
 // Problem: Current implementation has duplicate lines and doesn't properly handle parallel execution
 
-async startGeneration() {
+VibeLab.prototype.startGeneration = async function() {
     if (this.isGenerating) return;
     
     this.isGenerating = true;
@@ -43,9 +43,9 @@ async startGeneration() {
         document.getElementById('pause-queue').disabled = true;
         document.getElementById('queue-status').textContent = 'Generation complete';
     }
-}
+};
 
-async generateSVG(queueItem) {
+VibeLab.prototype.generateSVG = async function(queueItem) {
     queueItem.status = 'running';
     queueItem.progress = 10;
     this.updateQueueDisplay();
@@ -102,10 +102,10 @@ async generateSVG(queueItem) {
     } finally {
         this.updateQueueDisplay();
     }
-}
+};
 
 // Update executeLLMCommand to accept additional data
-async executeLLMCommand(model, prompt, additionalData = {}) {
+VibeLab.prototype.executeLLMCommand = async function(model, prompt, additionalData = {}) {
     try {
         const response = await fetch("http://localhost:8081/generate", {
             method: "POST",
@@ -134,4 +134,4 @@ async executeLLMCommand(model, prompt, additionalData = {}) {
         console.error("LLM execution error:", error);
         throw new Error(`Failed to generate with ${model}: ${error.message}`);
     }
-}
+};

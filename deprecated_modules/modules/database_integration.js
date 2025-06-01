@@ -52,8 +52,8 @@ class DatabaseAPI {
     }
 }
 
-// Update createExperiment to use database
-async createExperiment() {
+// Update createExperiment to use database;
+VibeLab.prototype.createExperiment = async function() {
     const prompts = this.getPrompts();
     const models = this.getSelectedModels();
     const variations = this.getPromptVariations();
@@ -121,4 +121,4 @@ async createExperiment() {
     } catch (error) {
         alert(`Failed to create experiment: ${error.message}`);
     }
-}
+};
