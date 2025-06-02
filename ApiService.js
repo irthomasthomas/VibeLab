@@ -213,6 +213,29 @@ class ApiService {
         });
     }
 
+    // ... (existing ApiService methods) ...
+
+    // ==================== EVALUATION ENDPOINTS ====================
+    /**
+     * Submit evaluation rankings for an experiment
+     * @param {string} experimentId
+     * @param {Array<object>} evaluations - Array of { generation_id, rank, quality_score?, evaluator_id? }
+     */
+    async submitEvaluations(experimentId, evaluations) {
+        const payload = {
+            experiment_id: experimentId,
+            evaluations: evaluations
+        };
+        // The backend endpoint is /api/v1/evaluations
+        // It returns a detailed response, including potential partial errors.
+        return await this.makeRequest('/api/v1/evaluations', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+    }
+
+    // Ensure this new method is correctly indented within the ApiService class.
+    // It can go after MODEL ENDPOINTS or before UTILITY ENDPOINTS.
     // ==================== UTILITY ENDPOINTS ====================
 
     /**
