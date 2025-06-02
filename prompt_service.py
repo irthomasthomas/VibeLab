@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from database_manager import DatabaseManager
 
-class PromptManager:
+class PromptService:
     def __init__(self, db_path="data/vibelab_research.db"):
         self.db_manager = DatabaseManager(db_path)
         
@@ -130,15 +130,5 @@ class PromptManager:
         self.db_manager.execute_query(query, (template_id,))
         return True
     
-    # Legacy methods for backward compatibility
-    def load_data(self):
-        """Legacy method - returns all templates in old format"""
-        return self.get_templates()
     
-    def save_data(self, data):
-        """Legacy method - not needed with direct DB operations"""
-        pass
     
-    def ensure_storage_exists(self):
-        """Legacy method - database tables are created by schema"""
-        pass
