@@ -31,22 +31,22 @@
                     <!-- Template Management -->
                     <div class="template-management">
                         <div class="template-selector-row">
-                            <select id="template-selector">
+                            <select id="template-selector-setup">
                                 <option value="">Select a template or create custom...</option>
                             </select>
-                            <button id="load-template">Load Template</button>
-                            <button id="save-as-template">Save as Template</button>
+                            <button id="load-template-btn">Load Template</button>
+                            <button id="save-setup-as-template-btn">Save as Template</button>
                         </div>
                         <div class="template-actions">
-                            <button id="manage-templates">Manage Templates</button>
+                            <button id="manage-templates-btn">Manage Templates</button>
                         </div>
                     </div>
                     
                     <!-- Dynamic Prompts -->
-                    <div class="prompt-inputs" id="dynamic-prompts">
+                    <div class="prompt-inputs" id="dynamic-prompts-setup">
                         <!-- Will be populated dynamically -->
                     </div>
-                    <button id="add-prompt">+ Add Custom Prompt</button>
+                    <button id="add-prompt-btn-setup">+ Add Custom Prompt</button>
                 </div>
                 <div class="setup-section">
                     <h3>Models</h3>
@@ -73,7 +73,7 @@
                     
                     <div id="prompt-techniques-container">
                         <!-- Default techniques -->
-                    <div id="prompt-techniques-list">
+                    <div id="prompt-techniques-list-setup">
                         <div class="prompt-technique-item">
                             <input type="checkbox" class="technique-enabled" value="base" checked>
                             <input type="text" class="technique-name" value="Baseline" readonly>
@@ -93,7 +93,7 @@
                             <span class="technique-type">(editable)</span>
                         </div>
                     </div>
-                    <button type="button" id="add-prompt-technique" class="secondary-btn">+ Add Custom Technique</button>
+                    <button type="button" id="add-prompt-technique-btn-setup" class="secondary-btn">+ Add Custom Technique</button>
                 </div>
                 <!-- Add this to the Setup tab in index.html -->
                 <div class="setup-section">
@@ -140,12 +140,14 @@
                 </div>
 <div class="setup-section">
                     <h3>Generation Settings</h3>
+                    <div class="gen-settings-item"><label>Experiment Description: <textarea id="experiment-description-setup" placeholder="Optional description..."></textarea></label></div>
+                    <div class="gen-settings-item"><label>Experiment Tags (comma-sep): <input type="text" id="experiment-tags-setup" placeholder="e.g., abstract, geometric"></label></div>
                     <div class="gen-settings">
-                        <label>SVGs per variation: <input type="number" id="svgs-per-var" value="4" min="1" max="10"></label>
-                        <label><input type="checkbox" id="skip-baseline"> Skip baseline variations</label>
+                        <label>SVGs per variation: <input type="number" id="svgs-per-var-setup" value="4" min="1" max="10"></label>
+                        <label><input type="checkbox" id="skip-baseline-setup"> Skip baseline variations</label>
                         <label>Max parallel jobs: <input type="number" id="max-parallel" value="8" min="1" max="10"></label>
-                        <label>Experiment name: <input type="text" id="experiment-name" placeholder="Auto-generated if empty"></label>
-                        <button id="start-experiment" class="primary-btn">Create Experiment</button>
+                        <label>Experiment name: <input type="text" id="experiment-name-setup" placeholder="Auto-generated if empty"></label>
+                        <button id="start-experiment-btn-setup" class="primary-btn">Create Experiment</button>
                     </div>
                 </div>
             </div>
@@ -263,20 +265,20 @@
     <!-- Template Management Modal -->
     <div id="template-modal" class="modal" style="display: none;">
         <div class="modal-content">
-            <span class="close">&times;</span>
+            <span class="close-modal-btn">&times;</span>
             <h3>Manage Templates</h3>
-            <div id="template-list">
+            <div id="template-list-manager">
                 <!-- Will be populated dynamically -->
             </div>
             <div class="template-form">
                 <h4>Create New Template</h4>
-                <input type="text" id="new-template-name" placeholder="Template name">
-                <textarea id="new-template-prompt" placeholder="Prompt text"></textarea>
-                <input type="text" id="new-template-tags" placeholder="Tags (comma-separated)">
+                <input type="text" id="new-template-name-manager" placeholder="Template name">
+                <textarea id="new-template-prompt-manager" placeholder="Prompt text"></textarea>
+                <input type="text" id="new-template-tags-manager" placeholder="Tags (comma-separated)">
                 <label>
-                    <input type="checkbox" id="new-template-animated"> Animated
+                    <input type="checkbox" id="new-template-animated-manager"> Animated
                 </label>
-                <button id="create-template">Create Template</button>
+                <button id="create-template-modal-btn">Create Template</button>
             </div>
         </div>
     </div>
