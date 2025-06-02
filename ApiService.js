@@ -238,7 +238,7 @@ class ApiService {
 
     // These static methods directly use fetch. They could be instance methods or use makeRequest.
     // For now, keeping them static as they are used that way in app.js.
-    static async getSavedConsortiums(baseUrl = 'http://localhost:8081') {
+    async getSavedConsortiums(baseUrl = this.baseUrl) {
         try {
             // Note: Using a passed baseUrl or a default if not an instance method context
             const response = await fetch(`${baseUrl}/api/consortiums`);
@@ -256,7 +256,7 @@ class ApiService {
         }
     }
 
-    static async getAvailableModels(baseUrl = 'http://localhost:8081') {
+    async getAvailableModels(baseUrl = this.baseUrl) {
         try {
             const response = await fetch(`${baseUrl}/api/available-models`);
             if (!response.ok) {

@@ -1107,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Consortium list loading (static method call)
     const consortiumListDiv = document.getElementById('consortium-list'); // Check if element exists
     if (consortiumListDiv) {
-        ApiService.getSavedConsortiums()
+        this.apiService.getSavedConsortiums()
             .then(data => { // data is already the array of consortiums or throws error
                 consortiumListDiv.innerHTML = ''; // Clear placeholder
                 if (data.length > 0) {
@@ -1136,7 +1136,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Model selection initialization (static method call)
     const availableModelsListDivGl = document.getElementById('available-models-list');
     if (availableModelsListDivGl) { // Ensure the model selection part is on the page
-        ApiService.getAvailableModels()
+        this.apiService.getAvailableModels()
             .then(data => { // data is array of models
                 window.allAvailableModelsGlobal = data.sort((a, b) => a.name.localeCompare(b.name)); // Store globally for renderAvailableModelsGlobal
                 renderAvailableModelsGlobal(); // Initial render

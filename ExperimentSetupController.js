@@ -55,7 +55,7 @@ class ExperimentSetupController {
         try {
             // This uses the global model selection UI elements
             // ApiService.getAvailableModels is static, no need for this.apiService here.
-            const models = await ApiService.getAvailableModels(); 
+            const models = await this.apiService.getAvailableModels(); 
             window.allAvailableModelsGlobal = models.sort((a, b) => a.name.localeCompare(b.name));
             renderAvailableModelsGlobal(); // This global function populates the UI
         } catch (error) {
