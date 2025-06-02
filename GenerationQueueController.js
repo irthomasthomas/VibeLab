@@ -3,402 +3,308 @@
  * Manages the SVG generation queue and processing
  */
 class GenerationQueueController {
-    constructor(apiService, updateCallback, onStatusUpdateCallback) { // Added onStatusUpdateCallback
+    constructor(apiService, resultCallback, statusCallback) { // Renamed callbacks for clarity
         this.apiService = apiService;
-        this.updateCallback = updateCallback;
-        this.onStatusUpdateCallback = onStatusUpdateCallback || (() => {}); // Added this line
+        this.resultCallback = resultCallback; // For individual item results/errors
+        this.statusCallback = statusCallback; // For overall queue status changes (running, paused, finished)
+        
         this.generationQueue = [];
         this.isGenerating = false;
-        this.currentExperiment = null;
+        this.currentExperimentId = null; // Store only ID, not whole object, to avoid staleness
+        this.initialJobCount = 0;
+        this.maxParallel = 4; // Default, can be overridden
     }
 
-    // Initialize the queue with experiment data
-    initializeQueue(experiment) {
-        this.currentExperiment = experiment;
-        this.generationQueue = [];
+    setupExperimentQueue(experiment) {
+        this.currentExperimentId = experiment.id;
+        this.generationQueue = []; // Reset queue
         
-        // Build queue from experiment configuration
-        experiment.prompts.forEach(prompt => {
-            experiment.models.forEach(model => {
-                experiment.variations.forEach(variation => {
-                    const baseData = {
-                        animated: experiment.techniques.includes('animation') // Assuming techniques is on experiment
-                    };
+        const { prompts, models, variations, svgsPerVar, skipBaseline } = experiment;
 
-                    if (variation.type === 'multi' && variation.n) {
-                        for (let i = 1; i <= variation.n; i++) {
-                            this.generationQueue.push({
-                                id: `${Date.now()}-${Math.random()}`,
-                                prompt: prompt,
-                                model: model,
-                                variation: { ...variation, index: i },
-                                animated: baseData.animated,
-                                status: 'pending',
-                                progress: 0,
-                                result: null
-                            });
-                        }
-                    } else {
+        if (!prompts || !models || !variations) {
+            console.error("GenerationQueueController: Invalid experiment data for queue setup.", experiment);
+            this.initialJobCount = 0;
+            this.statusCallback(); // Update UI to reflect empty/error state
+            return 0;
+        }
+        
+        prompts.forEach(promptObj => { // promptObj is {text, animated}
+            models.forEach(modelId => {
+                variations.forEach(variationObj => { // variationObj is {type, name, template}
+                    if (skipBaseline && variationObj.type === 'baseline') return;
+
+                    for (let i = 0; i < (svgsPerVar || 1); i++) {
                         this.generationQueue.push({
-                            id: `${Date.now()}-${Math.random()}`,
-                            prompt: prompt,
-                            model: model,
-                            variation: variation,
-                            animated: baseData.animated,
-                            status: 'pending',
+                            id: `job_${experiment.id}_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+                            experiment_id: experiment.id, // Link job to experiment
+                            prompt: promptObj, // Keep the {text, animated} object
+                            model: modelId,
+                            variation: variationObj,
+                            // 'animated' flag is within promptObj, no need for separate top-level animated
+                            status: 'pending', // 'pending', 'running', 'completed', 'error'
                             progress: 0,
-                            result: null
+                            result: null, // To store SVG content or full API response
+                            error: null,
+                            instance_num: i + 1 // For tracking multiple SVGs per variation
                         });
                     }
                 });
             });
         });
         
-        this.updateDisplay();
-        this.onStatusUpdateCallback(); // Added callback
-        return this.generationQueue.length;
+        this.initialJobCount = this.generationQueue.length;
+        this.isGenerating = false; // Reset generation status
+        this.updateQueueDisplayUI(); // Update dedicated queue tab UI
+        this.statusCallback(); // Notify VibeLab (app.js) for combined view update
+        return this.initialJobCount;
     }
 
-    // Update the queue display
-    updateDisplay() {
-        const queueContainer = document.getElementById('queue-container'); // This is for old queue tab
-        if (queueContainer) { // Check if old element exists
-            queueContainer.innerHTML = '';
-            this.generationQueue.forEach(item => {
-                const queueElement = document.createElement('div');
-                queueElement.className = `queue-item ${item.status}`;
-                queueElement.innerHTML = `
-                    <div class="queue-item-header">
-                        <span class="model">${item.model}</span>
-                        <span class="status">${item.status}</span>
-                    </div>
-                    <div class="queue-item-prompt">${item.prompt.substring(0, 50)}...</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${item.progress}%"></div>
-                    </div>
-                    ${item.error ? `<div class="error-message">${item.error}</div>` : ''}
-                `;
-                queueContainer.appendChild(queueElement);
-            });
+    updateQueueDisplayUI() { // Updates the dedicated "Queue" tab UI if it exists
+        const queueContainer = document.getElementById('queue-list'); // Specific ID for dedicated queue list
+        if (!queueContainer) return; // Silently return if dedicated queue UI isn't present
+
+        queueContainer.innerHTML = '';
+        if (this.generationQueue.length === 0) {
+            queueContainer.innerHTML = '<p>Generation queue is empty.</p>';
+            return;
         }
 
-
-        // Update status information
-        const completedTasks = this.generationQueue.filter(t => t.status === 'completed').length;
-        const totalTasks = this.generationQueue.length;
-        const progressText = `${completedTasks} / ${totalTasks} completed`;
-        
-        const progressElement = document.getElementById('generation-progress'); // Old progress element
-        if (progressElement) {
-            progressElement.textContent = progressText;
+        this.generationQueue.slice(0, 100).forEach(item => { // Display a limited number
+            const queueElement = document.createElement('div');
+            queueElement.className = `queue-item status-${item.status}`;
+            queueElement.innerHTML = `
+                <div class="queue-item-header">
+                    <span>Model: ${item.model}</span>
+                    <span class="status">Status: ${item.status}</span>
+                </div>
+                <div class="queue-item-prompt">Prompt: ${item.prompt.text.substring(0, 50)}...</div>
+                <div class="queue-item-variation">Variation: ${item.variation.name}</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${item.progress}%"></div>
+                </div>
+                ${item.error ? `<div class="error-message">Error: ${item.error}</div>` : ''}
+            `;
+            queueContainer.appendChild(queueElement);
+        });
+        if(this.generationQueue.length > 100) {
+            queueContainer.innerHTML += `<p>...and ${this.generationQueue.length - 100} more items.</p>`;
         }
-
-        // Notify App of detailed job updates (original callback)
-        if (this.updateCallback) {
-            this.updateCallback({
-                type: 'queue_update', // Differentiate from 'result'
-                queue: this.generationQueue,
-                isGenerating: this.isGenerating,
-                progress: { completed: completedTasks, total: totalTasks }
-            });
-        }
-        // Note: The onStatusUpdateCallback for overall status will be called by specific actions.
     }
 
-    // Start generation process
     async startGeneration() {
-        if (this.isGenerating) return;
-        if (!this.generationQueue || this.generationQueue.filter(item => item.status === 'pending').length === 0) {
+        if (this.isGenerating) {
+            console.log("Generation is already in progress.");
+            return;
+        }
+        const pendingItems = this.getPendingJobCount();
+        if (pendingItems === 0) {
             console.log("Queue is empty or no pending items to start.");
-            this.isGenerating = false; // Ensure state is correct
-            this.updateControls(false);
-            this.onStatusUpdateCallback();
+            this.isGenerating = false;
+            this.updateControlsUI(false);
+            this.statusCallback();
             return;
         }
 
         this.isGenerating = true;
-        this.updateControls(true);
-        this.onStatusUpdateCallback(); // Added callback
+        this.updateControlsUI(true);
+        this.statusCallback(); // Notify VibeLab that generation has started
 
-        const maxParallel = parseInt(document.getElementById('max-parallel')?.value) || 8;
-        // Ensure we only process items that are 'pending'.
-        const getPendingItems = () => this.generationQueue.filter(item => item.status === 'pending');
+        // Read maxParallel from UI if available, else use default
+        const maxParallelInput = document.getElementById('max-parallel-setup'); // Assuming ID if it exists
+        this.maxParallel = maxParallelInput ? parseInt(maxParallelInput.value) : this.maxParallel;
+        if (isNaN(this.maxParallel) || this.maxParallel < 1) this.maxParallel = 1;
         
-        let runningPromises = new Set();
+        console.log(`Starting generation with max parallel: ${this.maxParallel}`);
+
+        const runningPromises = new Set();
         
-        const processItem = async (item) => {
-            const promise = this.generateSVG(item).catch(error => {
-                console.error('Generation error for item:', item.id, error);
-                item.status = 'error';
-                item.error = error.message || 'Unknown generation error';
-            }).finally(() => {
-                runningPromises.delete(promise);
-                // this.updateDisplay(); // updateDisplay is called within generateSVG's finally
-                // this.onStatusUpdateCallback(); // This is also called in generateSVG's finally
-                
-                // Check if more items can be processed
-                if (this.isGenerating && runningPromises.size < maxParallel) {
-                    const pendingItems = getPendingItems();
-                    if (pendingItems.length > 0 && runningPromises.size < pendingItems.length) { // Ensure there are actual pending items not yet in runningPromises
-                         // Find next item not already being processed (a bit more complex than simple index)
-                        let nextItemToProcess = null;
-                        for(const pendingItem of pendingItems) {
-                            let isAlreadyRunning = false;
-                            runningPromises.forEach(p => { // Check if this item is already in a promise
-                                if (p.itemId === pendingItem.id) isAlreadyRunning = true;
-                            });
-                            if (!isAlreadyRunning) {
-                                nextItemToProcess = pendingItem;
-                                break;
-                            }
+        const tryProcessNext = () => {
+            if (!this.isGenerating) return; // Stop if paused
+
+            while (runningPromises.size < this.maxParallel) {
+                const nextItem = this.generationQueue.find(item => item.status === 'pending');
+                if (!nextItem) break; // No more pending items
+
+                nextItem.status = 'scheduled'; // Mark as scheduled to avoid reprocessing by this loop iteration
+                const promise = this.processSingleItem(nextItem)
+                    .finally(() => {
+                        runningPromises.delete(promise);
+                        if (this.isGenerating) { // If not paused, try to process more
+                            tryProcessNext();
                         }
-                        if(nextItemToProcess) processItem(nextItemToProcess); // Process next available
-                    }
-                }
-                
-                // Check if all tasks are done
-                if (runningPromises.size === 0 && getPendingItems().length === 0 && this.isGenerating) {
-                    this.isGenerating = false;
-                    this.updateControls(false);
-                    this.onStatusUpdateCallback(); // All done
-                    console.log("All generation tasks completed or failed.");
-                }
-            });
-            promise.itemId = item.id; // Tag promise for tracking
-            runningPromises.add(promise);
+                        // Check if all tasks are done after this one completes
+                        if (runningPromises.size === 0 && this.getPendingJobCount() === 0 && this.isGenerating) {
+                            this.isGenerating = false; // All processed items are done
+                            console.log("All generation tasks completed or failed.");
+                            this.updateControlsUI(false);
+                            this.statusCallback(); // Notify VibeLab: Finished
+                        }
+                    });
+                runningPromises.add(promise);
+            }
+            // If queue becomes empty and no promises are running, and we were generating.
+            if (this.isGenerating && runningPromises.size === 0 && this.getPendingJobCount() === 0) {
+                this.isGenerating = false;
+                 console.log("Generation queue complete (all items processed or scheduled and finished).");
+                this.updateControlsUI(false);
+                this.statusCallback(); // Notify VibeLab: Finished
+            }
         };
         
-        // Start initial batch from pending items
-        const initialPendingItems = getPendingItems();
-        for (let i = 0; i < Math.min(maxParallel, initialPendingItems.length); i++) {
-            processItem(initialPendingItems[i]);
-        }
-        
-        // If no items were started (e.g., maxParallel=0 or no pending), handle completion
-        if (runningPromises.size === 0 && this.isGenerating) {
-             this.isGenerating = false;
-             this.updateControls(false);
-             this.onStatusUpdateCallback();
-             console.log("No tasks to start in generation queue.");
-        }
+        tryProcessNext(); // Start processing
     }
 
-    // Generate a single SVG
-    async generateSVG(queueItem) {
-        if(queueItem.status !== 'pending') { // Don't re-process
-            console.warn("Skipping non-pending item:", queueItem.id, queueItem.status);
-            return;
-        }
-        queueItem.status = 'running';
-        queueItem.progress = 10;
-        this.updateDisplay(); // Update display for this item
-        this.onStatusUpdateCallback(); // Overall status might change (e.g. first item starts)
+    async processSingleItem(item) {
+        item.status = 'running';
+        item.progress = 10;
+        this.updateQueueDisplayUI();
+        this.statusCallback(); // Notify for potential UI updates on item start
 
         try {
-            const enhancedPrompt = this.enhancePrompt(queueItem.prompt, queueItem.variation, queueItem.animated);
-            queueItem.progress = 30;
-            this.updateDisplay();
-            this.onStatusUpdateCallback(); // Added callback
-
-            const generationDataForApiService = {
-                model: queueItem.model,
-                prompt: enhancedPrompt,
-                experiment_id: this.currentExperiment ? this.currentExperiment.id : null,
-                prompt_type: queueItem.variation.type,
+            // Construct payload for ApiService.generateContent
+            // Original prompt object is item.prompt = {text, animated}
+            // Variation object is item.variation = {type, name, template}
+            const generationRequestPayload = {
+                model: item.model,
+                prompt: item.variation.template.replace('{prompt}', item.prompt.text), // Apply template
+                experiment_id: item.experiment_id,
+                prompt_type: item.variation.type, // e.g., 'baseline', 'few_shot'
+                prompt_id: null, // If using a saved template, its ID could go here
                 metadata: {
-                    original_prompt_obj: queueItem.prompt,
-                    variation_obj: queueItem.variation,
-                    animated_flag: queueItem.animated,
-                    queue_item_id: queueItem.id,
-                    experiment_name: this.currentExperiment ? (this.currentExperiment.name || null) : null
+                    original_prompt_text: item.prompt.text,
+                    animated_flag: item.prompt.animated,
+                    queue_item_id: item.id,
+                    variation_name: item.variation.name,
+                    variation_template_content: item.variation.template, // Store the template used
+                    instance_num: item.instance_num
                 }
             };
 
-            const apiResponse = await this.apiService.generateContent(generationDataForApiService);
+            item.progress = 30;
+            this.updateQueueDisplayUI();
 
-            queueItem.progress = 90;
-            this.updateDisplay();
-            this.onStatusUpdateCallback(); // Added callback
+            const apiResponse = await this.apiService.generateContent(generationRequestPayload);
+            // apiResponse is { success, output, generation_time_ms, generation_id, conversation_id, error }
 
-            let textForSVGExtraction = '';
-            if (typeof apiResponse === 'string') {
-                textForSVGExtraction = apiResponse;
-            } else if (apiResponse && typeof apiResponse.output === 'string') {
-                textForSVGExtraction = apiResponse.output;
-            } else {
-                console.error("Unexpected API response structure or missing output field for item:", queueItem.id, apiResponse);
-                queueItem.status = 'error';
-                queueItem.error = 'Unexpected API response structure or missing output field';
-                // textForSVGExtraction remains '' and will likely result in 'No valid SVG' if extractSVG returns null
-            }
+            item.progress = 90;
 
-            const svgContent = this.extractSVG(textForSVGExtraction);
+            if (apiResponse.success && apiResponse.output) {
+                const svgContent = this.extractSVG(apiResponse.output);
+                if (svgContent) {
+                    item.result = { // Store details for this specific job
+                        svgContent: svgContent,
+                        generation_id: apiResponse.generation_id, // From backend
+                        timestamp: new Date().toISOString(),
+                        full_llm_response: apiResponse.output, // The raw output from LLM
+                        generation_time_ms: apiResponse.generation_time_ms,
+                        conversation_id: apiResponse.conversation_id
+                    };
+                    item.status = 'completed';
+                    item.progress = 100;
 
-            if (svgContent) {
-                queueItem.result = {
-                    fullResponse: apiResponse, // Store the full API response
-                    svgContent: svgContent,
-                    timestamp: new Date().toISOString()
-                };
-                queueItem.status = 'completed';
-                queueItem.progress = 100;
-
-                // Emit result for parent component to handle (original callback)
-                if (this.updateCallback) {
-                    this.updateCallback({
-                        type: 'result', // Specific type for a single result
-                        data: {
-                            id: queueItem.id,
-                            prompt: queueItem.prompt,
-                            animated: queueItem.animated,
-                            model: queueItem.model,
-                            variation: queueItem.variation,
-                            svgContent: svgContent,
-                            timestamp: queueItem.result.timestamp,
-                            rank: null,
-                            status: queueItem.status // Pass status along
-                        }
-                    });
+                    if (this.resultCallback) { // Notify VibeLab of the result
+                        this.resultCallback({
+                            type: 'result',
+                            itemId: item.id, // To link back to queue item if needed
+                            modelName: item.model, // For VibeLab.handleQueueUpdate
+                            originalPromptObject: item.prompt, // For VibeLab.handleQueueUpdate
+                            variationData: item.variation, // For VibeLab.handleQueueUpdate
+                            data: apiResponse // Pass the whole backend response
+                        });
+                    }
+                } else {
+                    item.status = 'error';
+                    item.error = 'No valid SVG found in LLM response.';
+                    if (this.resultCallback) this.resultCallback({ type: 'error', itemId: item.id, error: item.error});
                 }
             } else {
-                // If apiResponse was invalid and textForSVGExtraction was empty, this path will also be taken.
-                // If an error wasn't set before due to API response structure, set it now.
-                if (queueItem.status !== 'error') {
-                    queueItem.status = 'error';
-                    queueItem.error = 'No valid SVG found in response';
-                }
+                item.status = 'error';
+                item.error = apiResponse.error || 'Generation failed at backend.';
+                 if (this.resultCallback) this.resultCallback({ type: 'error', itemId: item.id, error: item.error});
             }
         } catch (error) {
-            console.error("Error during SVG generation for item:", queueItem.id, error);
-            queueItem.status = 'error';
-            queueItem.error = error.message || 'API call failed';
+            console.error(`Error processing item ${item.id}:`, error);
+            item.status = 'error';
+            item.error = error.message || 'Network or unexpected error during generation.';
+            if (this.resultCallback) this.resultCallback({ type: 'error', itemId: item.id, error: item.error});
         } finally {
-            this.updateDisplay(); // Update display for this item
-            this.onStatusUpdateCallback(); // Overall status might change (e.g. item finished)
+            this.updateQueueDisplayUI();
+            this.statusCallback(); // Item finished (success or error)
         }
     }
-
-    // Enhance prompt based on variation and animation
-    enhancePrompt(basePrompt, variation, animated) {
-        let enhanced = basePrompt.text || basePrompt; // Assuming prompt can be object or string
-        
-        if (variation.type === 'detailed') {
-            enhanced = `Create a highly detailed ${enhanced}. Include intricate patterns, textures, and fine details.`;
-        } else if (variation.type === 'minimalist') {
-            enhanced = `Create a minimalist ${enhanced}. Use simple shapes, limited colors, and clean lines.`;
-        } else if (variation.type === 'multi' && variation.index) {
-            enhanced = `${enhanced} (Variation ${variation.index} of ${variation.n})`;
-        }
-        // Example integration with prompt techniques (if 'variation' holds technique info)
-        else if (variation.template) {
-             enhanced = variation.template.replace('{prompt}', enhanced);
-        }
-
-
-        if (animated) { // Assuming animated is a boolean on the prompt or variation
-            enhanced += ' Include CSS animations for subtle movement.';
-        }
-
-        return enhanced;
-    }
-
-    // Extract SVG from response
-    extractSVG(text) {
+    
+    extractSVG(text) { // Utility, could be static or moved
+        if (typeof text !== 'string') return null;
         const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/i);
         return svgMatch ? svgMatch[0] : null;
     }
 
-    // Pause generation
     pauseGeneration() {
+        if (!this.isGenerating) return;
         this.isGenerating = false;
-        this.updateControls(false);
-        const queueStatus = document.getElementById('queue-status'); // Old element
-        if (queueStatus) queueStatus.textContent = 'Paused';
-        this.onStatusUpdateCallback(); // Added callback
+        console.log("Generation paused by user.");
+        this.updateControlsUI(false);
+        this.statusCallback(); 
     }
 
-    // Clear the queue
     clearQueue() {
-        const confirmClear = confirm('Are you sure you want to clear the entire queue? This will remove all pending and completed items.');
-        if (confirmClear) {
-            this.isGenerating = false;
-            this.generationQueue = [];
-            this.updateDisplay();
-            this.updateControls(false);
-            this.onStatusUpdateCallback(); // Added callback
+        if (!confirm('Are you sure you want to clear the entire generation queue? This will remove all pending and completed items.')) {
+            return;
         }
+        this.isGenerating = false; // Stop any ongoing processing loops
+        this.generationQueue = [];
+        this.initialJobCount = 0;
+        this.updateQueueDisplayUI();
+        this.updateControlsUI(false);
+        this.statusCallback(); 
+        console.log("Generation queue cleared.");
     }
 
-    // Update control buttons state (for old queue tab, might need adaptation for new UI)
-    updateControls(isGenerating) {
-        const startBtn = document.getElementById('start-queue');
-        const pauseBtn = document.getElementById('pause-queue');
-        const queueStatusSpan = document.getElementById('queue-status'); // For old tab
+    updateControlsUI(isCurrentlyGenerating) { // Updates dedicated queue tab controls
+        const startBtn = document.getElementById('start-queue-btn'); // Specific ID
+        const pauseBtn = document.getElementById('pause-queue-btn'); // Specific ID
+        const queueStatusSpan = document.getElementById('dedicated-queue-status-text'); // Specific ID
 
-        if (startBtn) startBtn.disabled = isGenerating;
-        if (pauseBtn) pauseBtn.disabled = !isGenerating;
+        if (startBtn) startBtn.disabled = isCurrentlyGenerating || (this.getPendingJobCount() === 0);
+        if (pauseBtn) pauseBtn.disabled = !isCurrentlyGenerating;
         
         if (queueStatusSpan) {
-            if (isGenerating) {
-                queueStatusSpan.textContent = 'Generating...';
-            } else if (this.generationQueue.filter(item => item.status === 'pending').length === 0 && this.generationQueue.length > 0) {
-                queueStatusSpan.textContent = 'Generation complete';
+            if (isCurrentlyGenerating) {
+                queueStatusSpan.textContent = 'Status: Generating...';
+            } else if (this.getPendingJobCount() === 0 && this.generationQueue.length > 0) {
+                queueStatusSpan.textContent = 'Status: All tasks processed.';
             } else if (this.generationQueue.length === 0) {
-                 queueStatusSpan.textContent = 'No experiment loaded';
-            }
-             else {
-                queueStatusSpan.textContent = 'Paused/Ready';
+                 queueStatusSpan.textContent = 'Status: Queue empty.';
+            } else {
+                queueStatusSpan.textContent = 'Status: Paused / Ready.';
             }
         }
     }
     
-    get isRunning() { // Getter for App.js to check status
-        return this.isGenerating;
+    getPendingJobCount() {
+        return this.generationQueue.filter(item => item.status === 'pending' || item.status === 'scheduled').length;
     }
 
-    // Wait for all running promises to complete (original logic, might not be needed with new processItem)
-    // async waitForCompletion(runningPromises) {
-    //     return new Promise((resolve) => {
-    //         const check = () => {
-    //             if (runningPromises.size === 0 || !this.isGenerating) {
-    //                 resolve();
-    //             } else {
-    //                 setTimeout(check, 100);
-    //             }
-    //         };
-    //         check();
-    //     });
-    // }
-
-    // Get queue state for persistence
+    // getState and setState are useful if we want to persist queue state to localStorage via VibeLab
     getState() {
         return {
             generationQueue: this.generationQueue,
             isGenerating: this.isGenerating,
-            currentExperiment: this.currentExperiment
+            currentExperimentId: this.currentExperimentId,
+            initialJobCount: this.initialJobCount
         };
     }
 
-    // Restore queue state
     setState(state) {
-        if (state.generationQueue) {
-            this.generationQueue = state.generationQueue;
+        if (state) {
+            this.generationQueue = state.generationQueue || [];
+            this.isGenerating = state.isGenerating || false;
+            this.currentExperimentId = state.currentExperimentId || null;
+            this.initialJobCount = state.initialJobCount || 0;
+            
+            this.updateQueueDisplayUI();
+            this.updateControlsUI(this.isGenerating);
+            this.statusCallback();
         }
-        if (state.isGenerating !== undefined) {
-            this.isGenerating = state.isGenerating;
-        }
-        if (state.currentExperiment) {
-            this.currentExperiment = state.currentExperiment;
-        }
-        this.updateDisplay();
-        this.updateControls(this.isGenerating); // Update controls based on restored state
-        this.onStatusUpdateCallback(); // Notify of restored state
     }
-}
-
-// Make GenerationQueueController globally accessible in the browser
-if (typeof window !== 'undefined') {
-    window.GenerationQueueController = GenerationQueueController;
-} else if (typeof module !== 'undefined' && module.exports) {
-    module.exports = GenerationQueueController;
 }
