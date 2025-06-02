@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VibeLab - Prompt Variation Testing</title>
     <link rel="stylesheet" href="style.css">
+    <script src="GenerationQueueController.js"></script>
+    <script src="ExperimentSetupController.js"></script>
 </head>
 <body>
     <div class="container">
@@ -49,11 +51,18 @@
                 <div class="setup-section">
                     <h3>Models</h3>
                     <div class="model-selection">
-                        <label><input type="checkbox" value="anthropic/claude-3-5-sonnet-20241022" checked> Claude 3.5 Sonnet</label>
-                        <label><input type="checkbox" value="gpt-4"> GPT-4</label>
-                        <label><input type="checkbox" value="claude-3-opus-20240229"> Claude 3 Opus</label>
-                        <input type="text" id="custom-model" placeholder="Custom model name">
-                        <button id="add-model">+ Add Custom</button>
+                        <input type="text" id="model-filter-input" placeholder="Type to filter models...">
+                        <div id="available-models-list" class="available-models-checkboxes">
+                            <!-- Models will be populated here by JavaScript -->
+                        </div>
+                        <div class="custom-model-adder">
+                             <input type="text" id="custom-model-name" placeholder="Or add custom model ID">
+                             <button type="button" id="add-custom-model-button" class="secondary-btn-small">+ Add</button>
+                        </div>
+                        <h4>Selected Models:</h4>
+                        <div id="selected-models-display">
+                            <!-- Selected models will be shown here -->
+                        </div>
                     </div>
                 </div>
 
@@ -64,6 +73,7 @@
                     
                     <div id="prompt-techniques-container">
                         <!-- Default techniques -->
+                    <div id="prompt-techniques-list">
                         <div class="prompt-technique-item">
                             <input type="checkbox" class="technique-enabled" value="base" checked>
                             <input type="text" class="technique-name" value="Baseline" readonly>
@@ -88,7 +98,7 @@
                 <!-- Add this to the Setup tab in index.html -->
                 <div class="setup-section">
                     <h3>LLM Consortium Models</h3>
-                    <div class="consortium-config">
+<!--                     <div class="consortium-config">
                         <p>Define a consortium of models that work together to produce optimized responses.</p>
                         
                         <div id="consortium-definition">
@@ -119,7 +129,7 @@
                             
                             <button id="create-consortium" class="secondary-btn">Create Consortium</button>
                         </div>
-                        
+ -->
                         <div id="saved-consortiums">
                             <h4>Saved Consortiums</h4>
                             <div id="consortium-list">
@@ -157,6 +167,25 @@
 
         <!-- Evaluation Tab -->
         <section id="evaluate-tab" class="tab-content">
+    <div class="experiment-status-controls">
+        <button id="combined-start-experiment-btn" class="primary-btn">Start Experiment</button>
+        <button id="combined-pause-experiment-btn" style="display:none;">Pause Experiment</button>
+        <button id="combined-edit-experiment-btn" class="secondary-btn">Edit Experiment</button>
+        <span id="combined-experiment-status">Status: Idle</span>
+    </div>
+
+    <div class="overall-progress-bar-container">
+        <div id="experiment-progress-compact" class="progress-bar-overall">
+            <div class="progress-fill-overall" style="width: 0%;"></div>
+            <span class="progress-text-overall">0/0 (0%)</span>
+        </div>
+        <button id="toggle-detailed-queue-btn" class="secondary-btn-small">Show Details</button>
+        <div id="detailed-queue-view" class="queue-list" style="display:none;">
+            <!-- Detailed queue will be rendered here -->
+            <p>Detailed job queue will appear here.</p>
+        </div>
+    </div>
+
             <div class="eval-controls">
                 <select id="eval-prompt-filter">
                     <option value="all">All Prompts</option>

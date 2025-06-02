@@ -407,43 +407,89 @@ async def register_model(request: Request):
         logger.error(f"Error registering model: {str(e)}")
         return {"success": False, "error": str(e)}
 
-if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8081)
+import sqlite3
+import json # Ensure json is imported for parsing config if stored as string
 
-@app.post("/models/register")
+DATABASE_PATH_CONSORTIUMS = 'data/vibelab_research.db' # Using existing DB name
 
-@app.post("/models/register")
-async def register_model(request: Request):
-    """Register a model in the database before first use"""
+@app.get("/api/consortiums")
+async def get_saved_consortiums_api():
+    conn = None
     try:
-        data = await request.json()
-        model_name = data.get('model')
+        conn = sqlite3.connect(DATABASE_PATH_CONSORTIUMS)
+        conn.row_factory = sqlite3.Row # To access columns by name
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, config, created_at FROM consortium_configs ORDER BY created_at DESC")
+        consortiums = cursor.fetchall()
         
-        if not model_name:
-            return {"success": False, "error": "Model name required"}
-        
-        # Check if model exists in llm
-        try:
-            import llm
-            model_instance = llm.get_model(model_name)
-            if not model_instance:
-                return {"success": False, "error": f"Model '{model_name}' not available in llm"}
-        except Exception as e:
-            return {"success": False, "error": f"Failed to validate model: {str(e)}"}
-        
-        # Register in database
-        existing_model = db.get_model_by_name(model_name)
-        if not existing_model:
-            model_id = db.register_model(model_name)
-            logger.info(f"Registered new model '{model_name}' with id: {model_id}")
-            return {"success": True, "model_id": model_id, "message": "Model registered"}
-        else:
-            return {"success": True, "model_id": existing_model['id'], "message": "Model already registered"}
-        
+        # Convert Row objects to dictionaries to ensure proper JSON serialization
+        result = []
+        for row in consortiums:
+            # The config might be stored as a JSON string, attempt to parse it.
+            # If it's already an object (e.g. if SQLite JSON1 extension was used to store it), this might not be needed
+            # or could cause issues. For now, assume it's a string that needs parsing for frontend.
+            # The frontend JS code already handles parsing, so we can also just pass it as is.
+            # Let's pass it as is, frontend will handle it.
+            config_data = row['config']
+            # try:
+            #     config_data = json.loads(row['config'])
+            # except (json.JSONDecodeError, TypeError):
+            #     config_data = row['config'] # Keep as string if not valid JSON or already an object
+
+            result.append({
+                "name": row["name"],
+                "config": config_data, # Pass raw, JS will parse
+                "created_at": row["created_at"]
+            })
+        return result
+    except sqlite3.Error as e:
+        print(f"Database error in get_saved_consortiums_api: {e}")
+        # Consider raising HTTPException for FastAPI to handle errors gracefully
+        # from fastapi import HTTPException
+        # raise HTTPException(status_code=500, detail=f"Database error: {e}")
+        return {"error": str(e), "message": "Failed to retrieve consortiums from database."} # Basic error response
     except Exception as e:
-        logger.error(f"Error registering model: {str(e)}")
-        return {"success": False, "error": str(e)}
+        print(f"Unexpected error in get_saved_consortiums_api: {e}")
+        # raise HTTPException(status_code=500, detail=f"Unexpected server error: {e}")
+        return {"error": str(e), "message": "An unexpected error occurred."}
+    finally:
+        if conn:
+            conn.close()
+
+
+# In-memory list of available LLM models
+# Each model is a dictionary with 'id' (unique identifier) and 'name' (display name)
+PREDEFINED_MODELS = [
+    {"id": "anthropic/claude-3-opus-20240229", "name": "Claude 3 Opus"},
+    {"id": "anthropic/claude-3-sonnet-20240229", "name": "Claude 3 Sonnet"},
+    {"id": "anthropic/claude-3-haiku-20240307", "name": "Claude 3 Haiku"},
+    {"id": "anthropic/claude-3-5-sonnet-20240620", "name": "Claude 3.5 Sonnet"}, # Updated date
+    {"id": "openai/gpt-4-turbo", "name": "GPT-4 Turbo"},
+    {"id": "openai/gpt-4", "name": "GPT-4"},
+    {"id": "openai/gpt-3.5-turbo", "name": "GPT-3.5 Turbo"},
+    {"id": "google/gemini-1.5-pro-latest", "name": "Gemini 1.5 Pro"},
+    {"id": "google/gemini-1.5-flash-latest", "name": "Gemini 1.5 Flash"},
+    {"id": "google/gemini-1.0-pro", "name": "Gemini 1.0 Pro"}, # Added for variety
+    {"id": "mistral-large", "name": "Mistral Large"},
+    {"id": "mistral-medium", "name": "Mistral Medium"}, # Common model
+    {"id": "mistral-small", "name": "Mistral Small"},
+    {"id": "cohere/command-r-plus", "name": "Cohere Command R+"},
+    {"id": "cohere/command-r", "name": "Cohere Command R"},
+    # OpenRouter models examples (can be expanded significantly)
+    {"id": "openrouter/anthropic/claude-3-opus", "name": "Claude 3 Opus (OpenRouter)"},
+    {"id": "openrouter/google/gemini-flash-1.5", "name": "Gemini 1.5 Flash (OpenRouter)"},
+    {"id": "openrouter/meta-llama/llama-3-70b-instruct", "name": "Llama 3 70B Instruct (OpenRouter)"},
+    {"id": "openrouter/mistralai/mistral-7b-instruct", "name": "Mistral 7B Instruct (OpenRouter)"},
+    {"id": "openrouter/openai/gpt-4-turbo-preview", "name": "GPT-4 Turbo Preview (OpenRouter)"},
+]
+
+@app.get("/api/available-models")
+async def get_available_models_list():
+    # In a real application, this list might come from a database,
+    # a configuration file, or by querying an LLM provider's API.
+    # For now, we return the hardcoded list.
+    return PREDEFINED_MODELS
 
 if __name__ == "__main__":
     import uvicorn

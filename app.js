@@ -1,9 +1,82 @@
+function sanitizeSvgString(svgString) {
+    if (!svgString || typeof svgString !== 'string') {
+        console.error("Invalid input: SVG string is required.");
+        return null;
+    }
+
+    try {
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(svgString, "image/svg+xml");
+        const svgElement = svgDoc.documentElement;
+
+        // Check for parsing errors or if the root element is not <svg>
+        if (svgDoc.querySelector('parsererror') || !svgElement || svgElement.tagName.toLowerCase() !== 'svg') {
+            console.warn("sanitizeSvgString: Parsing error or not an SVG root element.");
+            const errorElement = svgDoc.querySelector('parsererror');
+            if (errorElement) {
+                console.warn("Parser error details:", errorElement.textContent);
+            }
+            return null; // Or throw new Error("Invalid SVG content or parsing error");
+        }
+
+        // 1. Remove all <script> elements
+        const scripts = svgElement.getElementsByTagName('script');
+        while (scripts.length > 0) {
+            scripts[0].parentNode.removeChild(scripts[0]);
+        }
+
+        // 2. Iterate through all elements
+        const allElements = svgElement.getElementsByTagName('*');
+        for (let i = 0; i < allElements.length; i++) {
+            const el = allElements[i];
+
+            // 2a. Remove all attributes that start with 'on'
+            const attributesToRemove = [];
+            for (let j = 0; j < el.attributes.length; j++) {
+                const attrName = el.attributes[j].name.toLowerCase();
+                if (attrName.startsWith('on')) {
+                    attributesToRemove.push(el.attributes[j].name);
+                }
+                // 2b. Check 'href' and 'xlink:href' attributes
+                if (attrName === 'href' || attrName === 'xlink:href') {
+                    if (el.getAttribute(attrName)?.toLowerCase().startsWith('javascript:')) {
+                        attributesToRemove.push(el.attributes[j].name);
+                    }
+                }
+            }
+            attributesToRemove.forEach(attrName => el.removeAttribute(attrName));
+        }
+        
+        // Also check the root <svg> element itself for 'on' attributes or bad hrefs
+        const rootAttributesToRemove = [];
+         for (let j = 0; j < svgElement.attributes.length; j++) {
+            const attrName = svgElement.attributes[j].name.toLowerCase();
+            if (attrName.startsWith('on')) {
+                rootAttributesToRemove.push(svgElement.attributes[j].name);
+            }
+            if (attrName === 'href' || attrName === 'xlink:href') { // Though less common on root SVG
+                if (svgElement.getAttribute(attrName)?.toLowerCase().startsWith('javascript:')) {
+                    rootAttributesToRemove.push(svgElement.attributes[j].name);
+                }
+            }
+        }
+        rootAttributesToRemove.forEach(attrName => svgElement.removeAttribute(attrName));
+
+
+        // 3. Serialize the cleaned SVG DOM structure back into a string
+        const serializer = new XMLSerializer();
+        return serializer.serializeToString(svgElement);
+
+    } catch (error) {
+        console.error("sanitizeSvgString: Exception during SVG processing.", error);
+        return null; // Or throw error;
+    }
+}
 // VibeLab - Main Application Logic
 
 class VibeLab {
     constructor() {
         this.currentExperiment = null;
-        this.generationQueue = [];
         this.isGenerating = false;
         this.results = [];
         this.rankings = {};
@@ -11,14 +84,198 @@ class VibeLab {
 
         // Initialize API service
         this.apiService = new ApiService();
+        
+        // Initialize queue controller
+        this.queueController = new GenerationQueueController(this.apiService, (data) => this.handleQueueUpdate(data), () => this.updateCombinedExperimentView());
 
+        
+        // Initialize Experiment Setup Controller
+        // Initialize Experiment Setup Controller
+        this.experimentSetupController = new ExperimentSetupController({
+            onExperimentCreated: (experiment) => this.handleExperimentCreated(experiment),
+            onValidationError: (error) => this.handleExperimentValidationError(error),
+            onStateChanged: (state) => this.handleExperimentStateChanged(state),
+            onModelRegistration: (models) => this.registerModels(models)
+        });
         this.initializeEventListeners();
         this.loadSavedExperiments();
         this.loadTemplates();
+        this.updateCombinedExperimentView = this.updateCombinedExperimentView.bind(this);
+        this.renderDetailedQueueView = this.renderDetailedQueueView.bind(this);
+    }
+    registerModels(models) {
+        console.log("VibeLab: Models registered by ExperimentSetupController:", models);
+        // This method is called by ExperimentSetupController via the onModelRegistration callback.
+        // It can be used to update VibeLab's internal state if needed,
+        // or simply act as a confirmation hook. The actual models for an experiment
+        // are typically part of the experiment object passed to handleExperimentCreated.
+        // For now, logging confirms it's called correctly.
+        // Example: this.registeredModelsForCurrentSetup = models;
     }
 
+
+    handleQueueUpdate(data) {
+        if (data.type === "result" && this.currentExperiment && this.currentExperiment.results) {
+            // Ensure the result is added to the current experiment's results
+            const resultData = data.data;
+            this.currentExperiment.results.push(resultData);
+            
+            // Also update completed jobs if the experiment object tracks it this way
+            if (this.currentExperiment.hasOwnProperty('completedJobs')) {
+                this.currentExperiment.completedJobs++;
+            }
+
+            this.renderSvgForEvaluation(resultData); // Call the single, robust renderSvgForEvaluation
+        }
+        // this.updateEvaluationView(); // This might be too frequent, consider if needed on every queue update
+        this.updateCombinedExperimentView(); // More general update for progress bars etc.
+    }
+
+    handleExperimentCreated(experiment) {
+        this.currentExperiment = experiment;
+        this.generateQueue();
+        // this.queueController.startGeneration(); // Starting generation immediately might not always be desired.
+                                                // User might want to review before starting.
+                                                // The combined tab button will handle starting.
+        this.switchTab('evaluate');
+        this.updateCombinedExperimentView();
+    }
+
+    handleExperimentValidationError(error) {
+        const errorMessage = typeof error === "string" ? error : error.message || "Experiment validation failed";
+        vlWarning("Validation Error", errorMessage);
+        console.error("Experiment validation error:", error);
+    }
+
+    handleExperimentStateChanged(state) {
+        console.log("Experiment setup state changed:", state);
+        // Future: Update UI indicators, analytics tracking, etc.
+    }
+
+updateCombinedExperimentView() {
+    const evalGrid = document.getElementById('evaluation-images-grid'); // Get evalGrid once
+
+    if (!this.currentExperiment || (this.currentExperiment && this.queueController && this.queueController.generationQueue.length === 0 && !this.queueController.isGenerating)) {
+        if(combinedStartExperimentBtn) combinedStartExperimentBtn.textContent = 'Start Experiment';
+        if(combinedStartExperimentBtn) combinedStartExperimentBtn.disabled = !this.currentExperiment || (this.queueController && this.queueController.generationQueue.length === 0 && !this.queueController.isGenerating);
+        
+        // combinedPauseExperimentBtn is part of combinedStartExperimentBtn logic now
+        if(combinedEditExperimentBtn) combinedEditExperimentBtn.disabled = !this.currentExperiment; 
+        
+        if(combinedExperimentStatusSpan) combinedExperimentStatusSpan.textContent = this.currentExperiment ? 'Status: Idle / Queue Empty' : 'Status: No Experiment Loaded';
+        
+        if(experimentProgressFill) experimentProgressFill.style.width = '0%';
+        if(experimentProgressText) experimentProgressText.textContent = '0/0 (0%)';
+        
+        if(detailedQueueViewDiv) {
+            detailedQueueViewDiv.innerHTML = this.currentExperiment ? '<p>Queue is empty.</p>' : '<p>No experiment loaded.</p>';
+        }
+        if(evalGrid && (!this.currentExperiment || this.currentExperiment.results.length === 0)) {
+             evalGrid.innerHTML = '<p>Generated images for evaluation will appear here.</p>';
+        }
+
+
+        if (this.currentExperiment && this.queueController && this.queueController.generationQueue.length === 0 && !this.queueController.isGenerating) {
+            // If experiment exists but queue is empty and not generating, it might be finished or cleared
+            // this.currentExperiment.results = []; // Don't clear results here, they should persist
+            // this.currentExperiment.completedJobs = 0; // Don't reset completed jobs
+        }
+    }
+
+    if (this.currentExperiment) {
+        const { status, totalJobs, completedJobs } = this.currentExperiment;
+        const isRunning = this.queueController ? this.queueController.isGenerating : false; // Use isGenerating from controller
+
+        if(combinedStartExperimentBtn) {
+            combinedStartExperimentBtn.disabled = (this.queueController && this.queueController.generationQueue.length === 0 && !isRunning);
+            combinedStartExperimentBtn.textContent = isRunning ? 'Pause Experiment' : 'Start/Resume Experiment';
+        }
+
+        if(combinedEditExperimentBtn) combinedEditExperimentBtn.disabled = isRunning; 
+        if(combinedExperimentStatusSpan) combinedExperimentStatusSpan.textContent = `Status: ${status || 'N/A'} (${isRunning ? 'Running' : (this.queueController && this.queueController.generationQueue.length === 0 ? 'Empty/Finished' : 'Paused/Idle')})`;
+
+        const progressPercent = totalJobs > 0 ? (completedJobs / totalJobs) * 100 : 0;
+        if(experimentProgressFill) experimentProgressFill.style.width = `${progressPercent}%`;
+        if(experimentProgressText) experimentProgressText.textContent = `${completedJobs}/${totalJobs} (${progressPercent.toFixed(1)}%)`;
+
+        if (detailedQueueViewDiv && detailedQueueViewDiv.style.display !== 'none') {
+            this.renderDetailedQueueView(); 
+        }
+        // If results exist, they should be rendered by renderSvgForEvaluation via handleQueueUpdate
+        // If no results yet, the placeholder in evalGrid (set above or initially) remains.
+        if (evalGrid && this.currentExperiment.results && this.currentExperiment.results.length === 0 && this.queueController.generationQueue.length === 0) {
+            evalGrid.innerHTML = '<p>Generated images for evaluation will appear here. Start an experiment or load one with results.</p>';
+        }
+
+
+    } else {
+        if(combinedStartExperimentBtn) {
+            combinedStartExperimentBtn.textContent = 'Start Experiment';
+            combinedStartExperimentBtn.disabled = true;
+        }
+        if(combinedEditExperimentBtn) combinedEditExperimentBtn.disabled = true;
+        if(combinedExperimentStatusSpan) combinedExperimentStatusSpan.textContent = 'Status: No Experiment Loaded';
+        if(experimentProgressFill) experimentProgressFill.style.width = '0%';
+        if(experimentProgressText) experimentProgressText.textContent = '0/0 (0%)';
+        if(detailedQueueViewDiv) detailedQueueViewDiv.innerHTML = '<p>No experiment loaded.</p>';
+        if(evalGrid) evalGrid.innerHTML = '<p>Generated images for evaluation will appear here.</p>';
+    }
+}
+
+renderDetailedQueueView() {
+    if (!detailedQueueViewDiv) return;
+    const queue = this.queueController ? this.queueController.generationQueue : [];
+
+    if (!queue || queue.length === 0) {
+        detailedQueueViewDiv.innerHTML = '<p>Queue is empty or not initialized.</p>';
+        return;
+    }
+
+    detailedQueueViewDiv.innerHTML = ''; // Clear previous content
+    const displayQueue = [...queue]; // Use queue from controller
+
+    // Fisher-Yates (aka Knuth) Shuffle algorithm for display variety
+    for (let i = displayQueue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [displayQueue[i], displayQueue[j]] = [displayQueue[j], displayQueue[i]];
+    }
+
+    const ul = document.createElement('ul');
+    ul.classList.add('detailed-queue-list');
+
+    displayQueue.slice(0, 50).forEach(item => { // Display a limited number for performance
+        const li = document.createElement('li');
+        li.classList.add('detailed-queue-item', `status-${item.status}`);
+        
+        const promptText = item.prompt ? (item.prompt.text || item.prompt).substring(0, 50) + '...' : 'N/A';
+        const modelName = item.model || 'N/A';
+        const variationName = item.variation ? (item.variation.name || item.variation.type) : 'N/A';
+
+        li.innerHTML = `
+            <span class="queue-item-id">ID: ${item.id.substring(0,8)}</span>
+            <span class="queue-item-status">Status: ${item.status}</span>
+            <div class="queue-item-details">
+                Prompt: ${promptText}, Model: ${modelName}, Variation: ${variationName}
+            </div>
+        `;
+        ul.appendChild(li);
+    });
+    detailedQueueViewDiv.appendChild(ul);
+
+    if (displayQueue.length > 50) {
+        const moreItemsP = document.createElement('p');
+        moreItemsP.textContent = `... and ${displayQueue.length - 50} more items.`;
+        detailedQueueViewDiv.appendChild(moreItemsP);
+    }
+}
+
+// This is the more robust version of renderSvgForEvaluation, keep this one.
+// The earlier, simpler version should be removed.
+renderSvgForEvaluation(svgResultData) {
+    this.updateEvaluationView();
+}
+
     initializeEventListeners() {
-        // Tab switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.dataset.tab;
@@ -26,41 +283,136 @@ class VibeLab {
             });
         });
 
-        // Setup tab events
-        document.getElementById('add-prompt').addEventListener('click', () => this.addPromptInput());
-        document.getElementById('add-model').addEventListener('click', () => this.addCustomModel());
-        document.getElementById('add-prompt-technique').addEventListener('click', () => this.addCustomTechnique());
-        document.getElementById('start-experiment').addEventListener('click', () => this.createExperiment());
+        if (document.getElementById('add-prompt')) {
+            document.getElementById('add-prompt').addEventListener('click', () => {
+                this.experimentSetupController.addPromptInput();
+            });
+        }
+        if (document.getElementById('add-model')) {
+            document.getElementById('add-model').addEventListener('click', () => {
+                this.experimentSetupController.addCustomModel();
+            });
+        }
+        if (document.getElementById('start-experiment')) {
+            document.getElementById('start-experiment').addEventListener('click', () => {
+                this.experimentSetupController.createExperiment();
+            });
+        }
 
-        // Queue tab events
-        document.getElementById('start-queue').addEventListener('click', () => this.startGeneration());
-        document.getElementById('pause-queue').addEventListener('click', () => this.pauseGeneration());
-        document.getElementById('clear-queue').addEventListener('click', () => this.clearQueue());
-
+        // Queue tab events (assuming these are for a separate queue tab, not the combined one)
+        if (document.getElementById('start-queue')) {
+            document.getElementById('start-queue').addEventListener('click', () => this.queueController.startGeneration());
+        }
+        if (document.getElementById('pause-queue')) {
+            document.getElementById('pause-queue').addEventListener('click', () => this.queueController.pauseGeneration());
+        }
+        if (document.getElementById('clear-queue')) {
+            document.getElementById('clear-queue').addEventListener('click', () => this.queueController.clearQueue());
+        }
+        
         // Evaluation tab events
-        document.getElementById('eval-prompt-filter').addEventListener('change', () => this.updateEvaluationView());
-        document.getElementById('eval-view-mode').addEventListener('change', () => this.updateEvaluationView());
-        document.getElementById('reset-rankings').addEventListener('click', () => this.resetRankings());
-        document.getElementById('hide-details').addEventListener('change', () => this.updateEvaluationView());
-        document.getElementById('analysis-mode').addEventListener('change', () => this.updateAnalysisMode());
+        if (document.getElementById('eval-prompt-filter')) {
+            document.getElementById('eval-prompt-filter').addEventListener('change', () => this.updateEvaluationView());
+        }
+        if (document.getElementById('eval-view-mode')) {
+            document.getElementById('eval-view-mode').addEventListener('change', () => this.updateEvaluationView());
+        }
+        if (document.getElementById('reset-rankings')) {
+            document.getElementById('reset-rankings').addEventListener('click', () => this.resetRankings());
+        }
+        if (document.getElementById('hide-details')) {
+            document.getElementById('hide-details').addEventListener('change', () => this.updateEvaluationView());
+        }
+        if (document.getElementById('analysis-mode')) {
+            document.getElementById('analysis-mode').addEventListener('change', () => this.updateAnalysisMode());
+        }
 
         // Results tab events
-        document.getElementById('export-results').addEventListener('click', () => this.exportResults());
-        document.getElementById('save-experiment').addEventListener('click', () => this.saveExperiment());
-        document.getElementById('load-experiment').addEventListener('click', () => this.loadExperiment());
+        if (document.getElementById('export-results')) {
+            document.getElementById('export-results').addEventListener('click', () => this.exportResults());
+        }
+        if (document.getElementById('save-experiment')) {
+            document.getElementById('save-experiment').addEventListener('click', () => this.saveExperiment());
+        }
+        if (document.getElementById('load-experiment')) {
+            document.getElementById('load-experiment').addEventListener('click', () => this.loadExperiment());
+        }
+        
         // Template management events
-        document.getElementById('load-template').addEventListener('click', () => this.loadSelectedTemplate());
-        document.getElementById('save-as-template').addEventListener('click', () => this.saveCurrentAsTemplate());
-        document.getElementById('manage-templates').addEventListener('click', () => this.showTemplateManager());
-        document.getElementById('create-template').addEventListener('click', () => this.createNewTemplate());
+        if (document.getElementById('load-template')) {
+            document.getElementById('load-template').addEventListener('click', () => this.loadSelectedTemplate());
+        }
+        if (document.getElementById('save-as-template')) {
+            document.getElementById('save-as-template').addEventListener('click', () => this.saveCurrentAsTemplate());
+        }
+        if (document.getElementById('manage-templates')) {
+            document.getElementById('manage-templates').addEventListener('click', () => this.showTemplateManager());
+        }
+        if (document.getElementById('create-template')) {
+            document.getElementById('create-template').addEventListener('click', () => this.createNewTemplate());
+        }
         
         // Modal close handlers
-        document.querySelector('.close').addEventListener('click', () => this.hideTemplateManager());
-        document.getElementById('template-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'template-modal') {
-                this.hideTemplateManager();
-            }
-        });
+        const closeModalButton = document.querySelector('#template-modal .close');
+        if (closeModalButton) {
+            closeModalButton.addEventListener('click', () => this.hideTemplateManager());
+        }
+        const templateModal = document.getElementById('template-modal');
+        if (templateModal) {
+            templateModal.addEventListener('click', (e) => {
+                if (e.target.id === 'template-modal') {
+                    this.hideTemplateManager();
+                }
+            });
+        }
+
+        // Combined Evaluation Tab Listeners (moved here for correct 'this' context)
+        if (combinedStartExperimentBtn) {
+            combinedStartExperimentBtn.addEventListener('click', () => {
+                if (this.queueController && this.currentExperiment) { // Ensure experiment is loaded
+                    if (this.queueController.isGenerating) {
+                        this.queueController.pauseGeneration();
+                    } else {
+                        if (this.queueController.generationQueue.length > 0) {
+                            this.queueController.startGeneration();
+                        } else if (this.currentExperiment) {
+                            // If queue is empty but experiment exists, re-initialize and start
+                            // This assumes createExperiment or a similar method populates the queue
+                            // For now, let's assume startGeneration handles empty queue if needed or user re-initializes via "Edit"
+                            vlWarning("Queue Empty", "The generation queue is empty. Edit the experiment to add tasks or load an experiment with a pending queue.");
+                        }
+                    }
+                    this.updateCombinedExperimentView();
+                } else if (!this.currentExperiment) {
+                    vlWarning("No Experiment", "Please set up or load an experiment first.");
+                }
+            });
+        }
+
+        if (combinedEditExperimentBtn) {
+            combinedEditExperimentBtn.addEventListener('click', () => {
+                if (this.currentExperiment && this.queueController && this.queueController.isGenerating) {
+                    vlWarning("Cannot Edit", "Pause the current experiment before editing.");
+                    return;
+                }
+                // Optional: pre-fill setup form if this.currentExperiment exists
+                // This is handled by ExperimentSetupController when it loads.
+                this.switchTab('setup');
+            });
+        }
+
+        if (toggleDetailedQueueBtn) {
+            toggleDetailedQueueBtn.addEventListener('click', () => {
+                if (detailedQueueViewDiv) {
+                    const isHidden = detailedQueueViewDiv.style.display === 'none' || !detailedQueueViewDiv.style.display;
+                    detailedQueueViewDiv.style.display = isHidden ? 'block' : 'none';
+                    toggleDetailedQueueBtn.textContent = isHidden ? 'Hide Queue Details' : 'Show Queue Details';
+                    if (isHidden) {
+                        this.renderDetailedQueueView(); 
+                    }
+                }
+            });
+        }
     }
 
 switchTab(tabName) {
@@ -74,96 +426,12 @@ switchTab(tabName) {
 
         // Update content based on tab (optional, but good for conditional logic)
         if (tabName === 'evaluate') {
+            this.updateCombinedExperimentView();
             this.updateEvaluationView();
         } else if (tabName === 'results') {
             this.updateResultsTable();
             this.updateExperimentOverview();
         }
-}
-    addPromptInput() {
-        const container = document.querySelector('.prompt-inputs');
-        const promptCount = container.querySelectorAll('input[type="text"]').length + 1;
-
-        const promptDiv = document.createElement('div');
-        promptDiv.className = 'prompt-with-animation';
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.placeholder = 'Enter your prompt...';
-
-        const label = document.createElement('label');
-        label.className = 'animation-flag';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `animated${promptCount}`;
-
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(' Animated'));
-
-        promptDiv.appendChild(input);
-        promptDiv.appendChild(label);
-
-        container.insertBefore(promptDiv, document.getElementById('add-prompt'));
-    }
-
-    addCustomModel() {
-        const customInput = document.getElementById('custom-model');
-        const modelName = customInput.value.trim();
-        if (!modelName) return;
-
-        const modelSelection = document.querySelector('.model-selection');
-        const label = document.createElement('label');
-        label.innerHTML = `<input type="checkbox" value="${modelName}" checked> ${modelName}`;
-        modelSelection.insertBefore(label, customInput);
-        customInput.value = '';
-    }
-
-    async createExperiment() {
-        const prompts = this.getPrompts();
-        const models = this.getSelectedModels();
-        
-        // Register all models before creating experiment
-        if (models.length > 0) {
-            try {
-                await this.registerModels(models);
-            } catch (error) {
-                console.error('Model registration failed:', error);
-                // Continue anyway - backend will handle unregistered models
-            }
-        }
-        const variations = this.getPromptVariations();
-        const svgsPerVar = parseInt(document.getElementById('svgs-per-var').value) || 4;
-        const skipBaseline = document.getElementById('skip-baseline').checked;
-        const experimentName = document.getElementById('experiment-name').value ||
-                              `Experiment_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}`;
-
-        if (prompts.length === 0) {
-            vlWarning('Validation Error', 'Please enter at least one prompt');
-            return;
-        }
-
-        if (models.length === 0) {
-            vlWarning('Validation Error', 'Please select at least one model');
-            return;
-        }
-
-        this.currentExperiment = {
-            name: experimentName,
-            created: new Date().toISOString(),
-            skipBaseline: skipBaseline,
-            prompts,
-            models,
-            variations,
-            svgsPerVar,
-            results: []
-        };
-
-        this.generateQueue();
-        this.switchTab('queue');
-
-        document.getElementById('queue-status').textContent =
-            `Experiment "${experimentName}" created with ${this.generationQueue.length} tasks`;
     }
 
     getPrompts() {
@@ -193,52 +461,60 @@ switchTab(tabName) {
         const variations = [];
         const techniqueItems = document.querySelectorAll('#prompt-techniques-container .prompt-technique-item');
         techniqueItems.forEach(item => {
-        const isEnabledCheckbox = item.querySelector('.technique-enabled');
-        if (!isEnabledCheckbox || !isEnabledCheckbox.checked) return;
-        const nameInput = item.querySelector('.technique-name');
-        const templateInput = item.querySelector('.technique-template');
-        const name = nameInput ? nameInput.value.trim() : 'custom_technique';
-        const template = templateInput ? templateInput.value.trim() : '{prompt}';
-        if (name && template) {
-        variations.push({
-        type: name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
-        name: name,
-        template: template
-        });
-        }
+            const isEnabledCheckbox = item.querySelector('.technique-enabled');
+            if (!isEnabledCheckbox || !isEnabledCheckbox.checked) return;
+            const nameInput = item.querySelector('.technique-name');
+            const templateInput = item.querySelector('.technique-template');
+            const name = nameInput ? nameInput.value.trim() : 'custom_technique';
+            const template = templateInput ? templateInput.value.trim() : '{prompt}';
+            if (name && template) {
+                variations.push({
+                    type: name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+                    name: name,
+                    template: template
+                });
+            }
         });
         const baselineExists = variations.some(v => v.type === 'baseline');
         if (variations.length === 0) {
-        variations.push({ type: 'baseline', name: 'Baseline', template: '{prompt}' });
+            variations.push({ type: 'baseline', name: 'Baseline', template: '{prompt}' });
         } else {
-        const baselineCheckbox = document.querySelector('#prompt-techniques-container .prompt-technique-item input[value="base"].technique-enabled');
-        if (baselineCheckbox && baselineCheckbox.checked && !baselineExists) {
-        variations.push({ type: 'baseline', name: 'Baseline', template: '{prompt}' });
+            const baselineCheckbox = document.querySelector('#prompt-techniques-container .prompt-technique-item input[value="base"].technique-enabled');
+            if (baselineCheckbox && baselineCheckbox.checked && !baselineExists) {
+                variations.push({ type: 'baseline', name: 'Baseline', template: '{prompt}' });
+            }
         }
-        }
-        if (variations.length === 0) { // Final check if still empty\n
-        variations.push({ type: 'baseline', name: 'Baseline', template: '{prompt}' });
-        }
-        return variations;}
+        return variations;
+    }
 
     generateQueue() {
-        this.generationQueue = [];
+        // This method seems to be for manual queue generation, 
+        // but ExperimentSetupController and GenerationQueueController likely handle this.
+        // If this VibeLab.generationQueue is still used, it should be this.queueController.generationQueue
+        // For now, assuming queueController handles its own queue based on experiment definition.
+        // If this method is indeed used, it should populate this.queueController.generationQueue
+        // and then call this.queueController.updateDisplay() and this.updateCombinedExperimentView().
+
+        if (!this.currentExperiment) {
+            console.error("Cannot generate queue: No current experiment.");
+            return;
+        }
+
         const { prompts, models, variations, svgsPerVar, skipBaseline } = this.currentExperiment;
+        const newQueue = [];
 
         prompts.forEach(promptObj => {
             models.forEach(model => {
                 variations.forEach(variation => {
-                    // Skip baseline variations if requested and it's the baseline type
                     if (skipBaseline && variation.type === 'baseline') return;
 
                     for (let i = 0; i < svgsPerVar; i++) {
-                        this.generationQueue.push({
+                        newQueue.push({
                             id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                            prompt: promptObj.text,
-                            animated: promptObj.animated,
+                            prompt: promptObj, // promptObj itself {text, animated}
                             model,
                             variation,
-                            experiment_id: this.currentExperiment.id,
+                            experiment_id: this.currentExperiment.id || this.currentExperiment.name, // Use experiment ID or name
                             instance: i + 1,
                             status: 'pending',
                             progress: 0,
@@ -249,35 +525,77 @@ switchTab(tabName) {
                 });
             });
         });
+        
+        // This method should likely be part of queueController or update its queue
+        this.queueController.generationQueue = newQueue; // Directly setting controller's queue
+        this.queueController.updateDisplay(); // Assuming this updates the #queue-list
+        this.updateCombinedExperimentView(); // Update combined view elements
 
-        this.updateQueueDisplay();
-        document.getElementById('start-queue').disabled = false;
+        if (document.getElementById('start-queue')) { // This is for the dedicated queue tab
+             document.getElementById('start-queue').disabled = newQueue.length === 0;
+        }
     }
 
     updateQueueDisplay() {
         const queueList = document.getElementById('queue-list');
+        if (!queueList) {
+            // console.error("Queue list element not found for display update."); // Be less noisy if element is optional
+            return;
+        }
         queueList.innerHTML = '';
 
-        this.generationQueue.forEach(item => {
+        const currentQueue = this.queueController ? this.queueController.generationQueue : [];
+
+        if (!currentQueue || currentQueue.length === 0) {
+            queueList.innerHTML = '<p>Queue is empty.</p>';
+            return;
+        }
+
+        const displayQueue = [...currentQueue];
+
+        for (let i = displayQueue.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [displayQueue[i], displayQueue[j]] = [displayQueue[j], displayQueue[i]];
+        }
+
+        // Display only a subset if the queue is very large, e.g., first 50-100
+        const itemsToDisplay = displayQueue.slice(0, 100);
+
+
+        itemsToDisplay.forEach(item => {
             const queueItem = document.createElement('div');
-            queueItem.className = `queue-item ${item.status}`;
+            queueItem.className = `queue-item ${item.status}`; 
             
-            const variationText = this.getVariationDisplayText(item.variation);
-            
+            const promptTextObj = item.prompt; // item.prompt is {text, animated}
+            const promptText = promptTextObj ? (promptTextObj.text || String(promptTextObj)).substring(0, 100) + ((promptTextObj.text || String(promptTextObj)).length > 100 ? '...' : '') : 'N/A';
+            const modelName = item.model || 'N/A';
+            const techniqueName = item.variation ? (item.variation.name || item.variation.type || 'N/A') : 'N/A';
+
             queueItem.innerHTML = `
-                <div class="queue-prompt">${item.prompt.substring(0, 40)}${item.prompt.length > 40 ? '...' : ''}</div>
-                <div class="queue-model">${item.model}</div>
-                <div class="queue-variation">${variationText}</div>
-                <div class="queue-progress">
-                    <div class="progress-bar-compact">
-                        <div class="progress-fill-compact" style="width: ${item.progress}%"></div>
-                    </div>
+                <div class="queue-item-header">
+                    <span class="item-status">Status: ${item.status}</span>
+                    <span class="item-priority">Priority: ${item.priority !== undefined ? item.priority : 'N/A'}</span>
                 </div>
-                <div class="queue-status-badge">${item.status}</div>
+                <div class="queue-item-content">
+                    <p><strong>Prompt:</strong> ${promptText}</p>
+                    <p><strong>Model:</strong> ${modelName}</p>
+                    <p><strong>Technique:</strong> ${techniqueName}</p>
+                </div>
+                ${item.result && item.result.svgContent ? `<div class="queue-item-result"><img src="data:image/svg+xml;base64,${btoa(item.result.svgContent)}" alt="Generated SVG"></div>` : ''}
+                ${item.error ? `<div class="queue-item-error">Error: ${item.error}</div>` : ''}
             `;
+            if (item.id) {
+                queueItem.dataset.itemId = item.id;
+            }
             
             queueList.appendChild(queueItem);
         });
+
+        if (displayQueue.length > itemsToDisplay.length) {
+            const moreInfo = document.createElement('p');
+            moreInfo.textContent = `Displaying ${itemsToDisplay.length} of ${displayQueue.length} items.`;
+            queueList.appendChild(moreInfo);
+        }
     }
 
     getVariationDisplayText(variation) {
@@ -289,90 +607,33 @@ switchTab(tabName) {
     }
 
     async startGeneration() {
-        if (this.isGenerating) return;
-
-        this.isGenerating = true;
-        document.getElementById('start-queue').disabled = true;
-        document.getElementById('pause-queue').disabled = false;
-        document.getElementById('queue-status').textContent = 'Generating...';
-
-        const maxParallel = parseInt(document.getElementById('max-parallel').value) || 8;
-        const pendingItems = this.generationQueue.filter(item => item.status === 'pending');
-        
-        // Streaming queue processing - start new requests as others complete
-        let runningPromises = new Set();
-        let currentIndex = 0;
-        
-        const processNext = async () => {
-            if (currentIndex >= pendingItems.length || !this.isGenerating) {
-                return;
-            }
-            
-            const item = pendingItems[currentIndex++];
-            const promise = this.generateSVG(item).catch(error => {
-                console.error('Generation error:', error);
-                item.status = 'error';
-                item.error = error.message;
-            }).finally(() => {
-                runningPromises.delete(promise);
-                this.updateQueueDisplay();
-                // Start the next item immediately when one completes
-                processNext();
-            });
-            
-            runningPromises.add(promise);
-        };
-        
-        // Start initial batch
-        for (let i = 0; i < Math.min(maxParallel, pendingItems.length); i++) {
-            processNext();
-        }
-        
-        // Wait for all operations to complete
-        const checkCompletion = () => {
-            return new Promise((resolve) => {
-                const check = () => {
-                    if (runningPromises.size === 0 || !this.isGenerating) {
-                        resolve();
-                    } else {
-                        setTimeout(check, 100);
-                    }
-                };
-                check();
-            });
-        };
-        
-        await checkCompletion();
-        
-        if (this.isGenerating) {
-            this.isGenerating = false;
-            document.getElementById('start-queue').disabled = true;
-            document.getElementById('pause-queue').disabled = true;
-            document.getElementById('queue-status').textContent = 'Generation complete';
+        // This method seems to be a local implementation of what GenerationQueueController should do.
+        // Prefer using this.queueController.startGeneration().
+        // If this is kept, it needs to use this.queueController.generationQueue.
+        if (this.queueController) {
+            this.queueController.startGeneration();
+            this.updateCombinedExperimentView(); // Reflect status change
+        } else {
+            console.error("Queue controller not available to start generation.");
         }
     }
+
 
     async generateSVG(queueItem) {
         queueItem.status = 'running';
         queueItem.progress = 10;
-        this.updateQueueDisplay();
-        this.updateQueueDisplay();
+        this.queueController.updateDisplay(); // Single call is enough here for status change
 
-        // Prepare the full prompt
-        const fullPrompt = queueItem.variation.template.replace('{prompt}', queueItem.prompt);
+        const fullPrompt = queueItem.variation.template.replace('{prompt}', queueItem.prompt.text); // Use .text from prompt object
 
         queueItem.progress = 30;
-        this.updateQueueDisplay();
-        this.updateQueueDisplay();
+        // this.queueController.updateDisplay(); // Not strictly needed again immediately
 
-        // Execute llm command
         try {
-            const result = await this.executeLLMCommand(queueItem.model, fullPrompt, queueItem);
+            const result = await this.executeLLMCommand(queueItem.model, fullPrompt, queueItem); // Pass queueItem for potential detailed logging
             queueItem.progress = 90;
-        this.updateQueueDisplay();
-            this.updateQueueDisplay();
+            // this.queueController.updateDisplay(); // Update after LLM call
 
-            // Extract SVG from result
             const svgContent = this.extractSVG(result);
             if (svgContent) {
                 queueItem.result = {
@@ -383,17 +644,25 @@ switchTab(tabName) {
                 queueItem.status = 'completed';
                 queueItem.progress = 100;
 
-                // Add to experiment results
-                this.currentExperiment.results.push({
+                // This result structure is for the queue item.
+                // The result pushed to this.currentExperiment.results should match what renderSvgForEvaluation expects.
+                const experimentResult = {
                     id: queueItem.id,
-                    prompt: queueItem.prompt,
-                    animated: queueItem.animated,
+                    prompt: queueItem.prompt, // This is {text, animated}
+                    // animated: queueItem.prompt.animated, // Already in prompt object
                     model: queueItem.model,
                     variation: queueItem.variation,
-                    svgContent: svgContent,
+                    svgContent: svgContent, // This is what renderSvgForEvaluation needs
+                    status: 'completed', // Important for renderSvgForEvaluation
                     timestamp: queueItem.result.timestamp,
-                    rank: null // Will be set during evaluation
-                });
+                    rank: null 
+                };
+                // The handleQueueUpdate method should be responsible for adding to experiment results
+                // and calling renderSvgForEvaluation. This direct push here might be redundant
+                // if queueController's onUpdate callback handles it.
+                // For now, let's assume this is one way results get into the experiment.
+                // this.currentExperiment.results.push(experimentResult); // This might be handled by callback
+                // this.renderSvgForEvaluation(experimentResult); // Also likely handled by callback
             } else {
                 throw new Error('No valid SVG found in response');
             }
@@ -401,11 +670,15 @@ switchTab(tabName) {
             queueItem.status = 'error';
             queueItem.error = error.message;
             queueItem.progress = 0;
-            throw error;
+            // throw error; // Re-throwing might stop a batch process in queueController
+            console.error(`Error generating SVG for ${queueItem.id}:`, error); // Log instead of re-throwing to allow queue to continue
+        } finally {
+            this.queueController.updateDisplay(); // Final update for this item
+            this.updateCombinedExperimentView(); // Update overall progress
         }
     }
 
-    async executeLLMCommand(model, prompt) {
+    async executeLLMCommand(model, prompt) { // queueItem can be passed for more context if needed
         // Call our Python backend that interfaces with llm CLI
         try {
             // ApiService.makeRequest returns parsed JSON directly, not a Response object
@@ -432,34 +705,20 @@ switchTab(tabName) {
             throw new Error(`Failed to generate with ${model}: ${error.message}`);
         }
     }
-    generatePlaceholderSVG(prompt) {
-        // Generate a simple placeholder SVG for testing
-        const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-
-        return `<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
-            <rect width="200" height="200" fill="${color}" opacity="0.3"/>
-            <circle cx="100" cy="100" r="50" fill="${color}"/>
-            <text x="100" y="110" text-anchor="middle" fill="white" font-size="12">
-                ${prompt.substring(0, 20)}...
-            </text>
-        </svg>`;
-    }
-
     extractSVG(text) {
         const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/i);
         return svgMatch ? svgMatch[0] : null;
     }
 
     pauseGeneration() {
-        this.isGenerating = false;
-        document.getElementById('start-queue').disabled = false;
-        document.getElementById('pause-queue').disabled = true;
-        document.getElementById('queue-status').textContent = 'Paused';
-        this.isGenerating = false;
-        document.getElementById('start-queue').disabled = false;
-        document.getElementById('pause-queue').disabled = true;
-        document.getElementById('queue-status').textContent = 'Paused';
+        // This method should primarily call the queueController's pause mechanism.
+        if (this.queueController) {
+            this.queueController.pauseGeneration();
+            this.updateCombinedExperimentView(); // Reflect status change
+        } else {
+            console.error("Queue controller not available to pause generation.");
+        }
+        // The direct manipulation of this.isGenerating and DOM elements is now handled by queueController and updateCombinedExperimentView
     }
 
     clearQueue() {
@@ -467,28 +726,16 @@ switchTab(tabName) {
             return;
         }
 
-        // Stop any ongoing generation
-        this.isGenerating = false;
-        
-        // Clear the queue
-        this.generationQueue = [];
-        
-        // Update UI elements
-        this.updateQueueDisplay();
-        document.getElementById('start-queue').disabled = true;
-        document.getElementById('pause-queue').disabled = true;
-        document.getElementById('queue-status').textContent = 'Queue cleared. No experiment loaded.';
-        
-        // Clear results if they are tied to the current queue/experiment
-        if (this.currentExperiment) {
-            this.currentExperiment.results = [];
-            this.rankings = {};
+        if (this.queueController) {
+            this.queueController.clearQueue(); // Controller should handle its internal queue and UI updates
+        } else {
+            // Fallback if no controller, though this indicates a structural issue
+            // this.generationQueue = []; /* Intentionally removed, queueController should manage this. */ 
         }
         
-        // Provide user feedback
-        if (typeof vlInfo === 'function') {
-            vlInfo('Queue Cleared', 'The generation queue has been successfully cleared.');
-        }
+        // UI updates should be triggered by queueController or by updateCombinedExperimentView
+        this.updateCombinedExperimentView();
+        if (document.getElementById('queue-list')) this.updateQueueDisplay(); // For dedicated queue tab
     }
 
     addCustomTechnique() {
@@ -588,34 +835,66 @@ switchTab(tabName) {
         const variationText = this.getVariationDisplayText(result.variation);
         const hideDetails = document.getElementById('hide-details') && document.getElementById('hide-details').checked;
 
-        // Control SVG animation based on animated flag
-        const svgContainer = `<div class="svg-container ${result.animated ? 'animated' : 'static'}">${result.svgContent}</div>`;
+        // Create rank badge
+        const rankBadge = document.createElement('div');
+        rankBadge.className = 'rank-badge';
+        rankBadge.textContent = rank;
+        svgItem.appendChild(rankBadge);
 
-        if (hideDetails) {
-            svgItem.innerHTML = `
-                <div class="rank-badge">${rank}</div>
-                ${svgContainer}
-            `;
+        // Create SVG container
+        const svgContainer = document.createElement('div');
+        svgContainer.className = `svg-container ${result.animated ? 'animated' : 'static'}`;
+        
+        // Parse SVG content using DOMParser for robustness
+        if (result.svgContent && typeof result.svgContent === 'string') {
+            try {
+                const parser = new DOMParser();
+                const svgDoc = parser.parseFromString(result.svgContent, "image/svg+xml");
+                const svgElement = svgDoc.documentElement;
+
+                // Check for parsing errors or if the root element is not <svg>
+                if (svgDoc.querySelector('parsererror') || !svgElement || svgElement.tagName.toLowerCase() !== 'svg') {
+                    console.warn("createSVGItem: Parsing error or not an SVG root element for ID:", result.id, svgDoc.querySelector('parsererror') ? svgDoc.querySelector('parsererror').textContent : 'N/A');
+                    svgContainer.innerHTML = `<div class="eval-svg-error">Preview Error: Malformed SVG (ranking view)</div>`;
+                } else {
+                    // Remove scripts just in case, though svgContent should be pre-sanitized
+                    const scripts = svgElement.getElementsByTagName('script');
+                    while (scripts.length > 0) {
+                        scripts[0].parentNode.removeChild(scripts[0]);
+                    }
+                    svgContainer.appendChild(svgElement.cloneNode(true));
+                }
+            } catch (e) {
+                console.error("createSVGItem: Exception during SVG parsing for ID:", result.id, e);
+                svgContainer.innerHTML = `<div class="eval-svg-error">Preview Error: Parsing failed (ranking view)</div>`;
+            }
         } else {
-            svgItem.innerHTML = `
-                <div class="rank-badge">${rank}</div>
-                ${svgContainer}
-                <div class="svg-info">
-                    <div><strong>${result.model}</strong></div>
-                    <div>${variationText}</div>
-                </div>
+            console.warn("createSVGItem: svgContent is missing or not a string for ID:", result.id);
+            svgContainer.innerHTML = `<div class="eval-svg-error">Preview Error: No SVG content (ranking view)</div>`;
+        }
+        
+        svgItem.appendChild(svgContainer);
+
+        // Add details if not hidden
+        if (!hideDetails) {
+            const svgInfo = document.createElement('div');
+            svgInfo.className = 'svg-info';
+            svgInfo.innerHTML = `
+                <div><strong>${result.model}</strong></div>
+                <div>${variationText}</div>
             `;
+            svgItem.appendChild(svgInfo);
         }
 
         return svgItem;
     }
-
     initializeDragAndDrop() {
         const svgItems = document.querySelectorAll('.svg-item');
 
         svgItems.forEach(item => {
             item.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('text/plain', item.dataset.id);
+e.dataTransfer.effectAllowed = 'move';
                 item.classList.add('dragging');
             });
 
@@ -625,6 +904,7 @@ switchTab(tabName) {
 
             item.addEventListener('dragover', (e) => {
                 e.preventDefault();
+e.dataTransfer.dropEffect = 'move';
             });
 
             item.addEventListener('drop', (e) => {
@@ -672,14 +952,19 @@ switchTab(tabName) {
 
     resetRankings() {
         this.rankings = {};
-        this.templates = [];
 
-        // Initialize API service
-        this.apiService = new ApiService();
-        this.updateEvaluationView();
+        // Do NOT re-initialize API service or queue controller here.
+        // this.apiService = new ApiService();
+        // this.queueController = new GenerationQueueController(
+        //     this.apiService,
+        //     (data) => this.handleQueueUpdate(data) // Missing the second callback for updateCombinedExperimentView
+        // );
 
-        // Update results table after reset
-        this.updateResultsTable();
+        this.updateEvaluationView(); // Re-renders SVGs which will use new empty rankings
+        this.updateResultsTable();   // Re-renders table which will show 'Unranked'
+        if (typeof vlInfo === 'function') {
+            vlInfo('Rankings Reset', 'All rankings have been reset.');
+        }
     }
 
     updateResultsTable() {
@@ -783,8 +1068,8 @@ switchTab(tabName) {
         const results = this.currentExperiment.results;
         const uniqueModels = new Set(results.map(r => r.model));
         const uniqueVariations = new Set(results.map(r => r.variation.type));
-        const completedTasks = this.generationQueue.filter(t => t.status === 'completed').length;
-        const totalTasks = this.generationQueue.length;
+        const completedTasks = this.queueController.generationQueue.filter(t => t.status === 'completed').length;
+        const totalTasks = this.queueController.generationQueue.length;
 
         return {
             totalSVGs: results.length,
@@ -836,7 +1121,7 @@ switchTab(tabName) {
         const experimentData = {
             ...this.currentExperiment,
             rankings: this.rankings,
-            queue: this.generationQueue
+            queue: this.queueController.generationQueue
         };
 
         localStorage.setItem(`vibelab_${this.currentExperiment.name}`, JSON.stringify(experimentData));
@@ -859,9 +1144,9 @@ switchTab(tabName) {
             const experimentData = JSON.parse(localStorage.getItem(`vibelab_${experiments[index].name}`));
             this.currentExperiment = experimentData;
             this.rankings = experimentData.rankings || {};
-            this.generationQueue = experimentData.queue || [];
+            this.queueController.generationQueue = experimentData.queue || [];
 
-            this.updateQueueDisplay();
+            this.queueController.updateDisplay();
             this.updateEvaluationView();
             this.updateResultsTable();
             this.updateExperimentOverview();
@@ -1223,19 +1508,22 @@ switchTab(tabName) {
         if (!confirm('Delete this template?')) return;
         
         try {
-            const response = await this.apiService.makeRequest(`/prompts/${templateId}`, {
+            // Assuming makeRequest returns parsed JSON directly
+            const data = await this.apiService.makeRequest(`/prompts/${templateId}`, {
                 method: 'DELETE'
             });
             
-            const data = await response.json();
+            // const data = await response.json(); // Remove this line if makeRequest returns parsed JSON
             if (data.success) {
-                await this.loadTemplates();
-                this.refreshTemplateList();
+                await this.loadTemplates(); // Reload templates from server
+                this.refreshTemplateList();  // Update manager UI
+                if (typeof vlSuccess === 'function') vlSuccess('Template Deleted', 'Template successfully deleted.');
             } else {
-                alert('Failed to delete template: ' + data.error);
+                vlError('Error Deleting Template', `Failed to delete template: ${data.error || 'Unknown server error'}`);
             }
         } catch (error) {
-            alert('Failed to delete template: ' + error.message);
+            console.error('Failed to delete template:', error);
+            vlError('Error Deleting Template', `Failed to delete template: ${error.message}`);
         }
     }
 
@@ -1284,6 +1572,271 @@ switchTab(tabName) {
 
 // Initialize the application when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    window.vibeLab = new VibeLab();
+    window.vibeLab = new VibeLab(); // vibeLab is now globally accessible
+
+    // Event listener for "Add Custom Technique" button - can stay here or be moved
+    // If it needs 'this' context of VibeLab, it should be in initializeEventListeners
+    const addPromptTechniqueButton = document.getElementById('add-prompt-technique');
+    if (addPromptTechniqueButton) {
+        addPromptTechniqueButton.addEventListener('click', () => {
+            // This refers to VibeLab.addCustomTechnique() if it exists and is designed for this.
+            // The current addCustomTechnique in VibeLab adds to #prompt-techniques-container
+            // The global listener adds to #prompt-techniques-list
+            // These might be two different features or a naming conflict.
+            // For now, assuming the global listener's target is correct for its button.
+            const techniquesContainer = document.getElementById('prompt-techniques-list');
+            if (!techniquesContainer) {
+                console.warn('#prompt-techniques-list not found for adding custom technique.');
+                return;
+            }
+            const newTechniqueId = `custom-technique-${Date.now()}`;
+
+            const techniqueDiv = document.createElement('div');
+            techniqueDiv.classList.add('prompt-technique-item');
+            techniqueDiv.innerHTML = `
+                <input type="checkbox" id="${newTechniqueId}" name="prompt-techniques" value="custom" checked>
+                <label for="${newTechniqueId}">
+                    <input type="text" class="custom-technique-name" placeholder="Technique Name">
+                </label>
+                <textarea class="custom-technique-description" placeholder="Technique Description (will be shown to LLM)"></textarea>
+                <button type="button" class="remove-technique-btn">Remove</button>
+            `;
+
+            techniquesContainer.appendChild(techniqueDiv);
+
+            const newRemoveButton = techniqueDiv.querySelector('.remove-technique-btn');
+            if (newRemoveButton) {
+                newRemoveButton.addEventListener('click', () => {
+                    techniqueDiv.remove();
+                });
+            }
+        });
+    }
+
+
+    // Consortium list loading
+    if (document.getElementById('consortium-list')) {
+        loadAndDisplaySavedConsortiums(); // This global function is defined below
+    }
+
+    // Model selection initialization
+    if (document.getElementById('available-models-list')) {
+        fetchAvailableModels(); // This global function is defined below
+    }
 });
 
+// Function to fetch and display saved consortiums
+async function loadAndDisplaySavedConsortiums() {
+    const consortiumListDiv = document.getElementById('consortium-list');
+    consortiumListDiv.innerHTML = '<p>Loading saved consortiums...</p>'; // Placeholder
+
+    try {
+        const response = await ApiService.getSavedConsortiums(); // This will be a new ApiService method
+        if (response && response.success && response.data) {
+            if (response.data.length > 0) {
+                consortiumListDiv.innerHTML = ''; // Clear placeholder
+                const ul = document.createElement('ul');
+                ul.classList.add('saved-consortiums-list');
+                response.data.forEach(consortium => {
+                    const li = document.createElement('li');
+                    li.classList.add('saved-consortium-item');
+                    
+                    const detailsDiv = document.createElement('div');
+                    detailsDiv.classList.add('consortium-details');
+                    // Safely parse config JSON
+                    let configDetails = 'Invalid configuration data';
+                    if (typeof consortium.config === 'string') {
+                        try {
+                            const configObj = JSON.parse(consortium.config);
+                            configDetails = JSON.stringify(configObj, null, 2);
+                        } catch (e) {
+                            console.error('Error parsing consortium config:', e);
+                            configDetails = consortium.config; // Show raw string if parsing fails
+                        }
+                    } else if (typeof consortium.config === 'object') {
+                         configDetails = JSON.stringify(consortium.config, null, 2);
+                    }
+
+
+                    detailsDiv.innerHTML = `
+                        <strong>Name:</strong> ${consortium.name}<br>
+                        <strong>Created At:</strong> ${new Date(consortium.created_at).toLocaleString()}<br>
+                        <strong>Config:</strong> <pre>${configDetails}</pre>
+                    `;
+                    
+                    li.appendChild(detailsDiv);
+                    ul.appendChild(li);
+                });
+                consortiumListDiv.appendChild(ul);
+            } else {
+                consortiumListDiv.innerHTML = '<p>No saved consortiums found.</p>';
+            }
+        } else {
+            consortiumListDiv.innerHTML = `<p>Error loading consortiums: ${response.message || 'Unknown error'}</p>`;
+        }
+    } catch (error) {
+        console.error('Failed to fetch saved consortiums:', error);
+        consortiumListDiv.innerHTML = `<p>Failed to load saved consortiums. Check console for details.</p>`;
+        ErrorDisplay.showError('Failed to load saved consortiums.', error);
+    }
+}
+
+// --- Model Selection Logic ---
+let allAvailableModels = []; // To store models fetched from API
+const selectedModels = new Set(); // To store selected model IDs
+
+const modelFilterInput = document.getElementById('model-filter-input');
+const availableModelsListDiv = document.getElementById('available-models-list');
+const customModelNameInput = document.getElementById('custom-model-name');
+const addCustomModelButton = document.getElementById('add-custom-model-button');
+const selectedModelsDisplayDiv = document.getElementById('selected-models-display');
+
+// Function to render the list of available models (with checkboxes)
+function renderAvailableModels(filterText = '') {
+    if (!availableModelsListDiv) return;
+    availableModelsListDiv.innerHTML = '';
+    const lowerFilterText = filterText.toLowerCase();
+    
+    allAvailableModels
+        .filter(model => model.id.toLowerCase().includes(lowerFilterText) || model.name.toLowerCase().includes(lowerFilterText))
+        .forEach(model => {
+            const checkboxId = `model-${model.id.replace(/[^a-zA-Z0-9]/g, '-')}`; // Sanitize ID
+            const li = document.createElement('label'); // Use label for better UX
+            li.classList.add('model-checkbox-item');
+            li.setAttribute('for', checkboxId);
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = checkboxId;
+            checkbox.value = model.id;
+            checkbox.checked = selectedModels.has(model.id);
+            checkbox.addEventListener('change', (event) => {
+                if (event.target.checked) {
+                    selectedModels.add(model.id);
+                } else {
+                    selectedModels.delete(model.id);
+                }
+                renderSelectedModels();
+            });
+            
+            li.appendChild(checkbox);
+            li.appendChild(document.createTextNode(` ${model.name} (${model.id})`));
+            availableModelsListDiv.appendChild(li);
+        });
+}
+
+// Function to render the list of currently selected models
+function renderSelectedModels() {
+    if (!selectedModelsDisplayDiv) return;
+    selectedModelsDisplayDiv.innerHTML = '';
+    if (selectedModels.size === 0) {
+        selectedModelsDisplayDiv.innerHTML = '<p>No models selected.</p>';
+        return;
+    }
+    const ul = document.createElement('ul');
+    ul.classList.add('selected-models-list');
+    selectedModels.forEach(modelId => {
+        const li = document.createElement('li');
+        li.textContent = modelId;
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remove';
+        removeBtn.classList.add('remove-btn-small');
+        removeBtn.onclick = () => {
+            selectedModels.delete(modelId);
+            renderAvailableModels(modelFilterInput ? modelFilterInput.value : ''); // Re-render checkboxes to update their state
+            renderSelectedModels();
+        };
+        li.appendChild(removeBtn);
+        ul.appendChild(li);
+    });
+    selectedModelsDisplayDiv.appendChild(ul);
+}
+
+// Function to fetch available models from the API
+async function fetchAvailableModels() {
+    try {
+        const response = await ApiService.getAvailableModels(); // New ApiService method
+        if (response && response.success && Array.isArray(response.data)) {
+            allAvailableModels = response.data;
+            // Sort models by name for display
+            allAvailableModels.sort((a, b) => a.name.localeCompare(b.name));
+        } else {
+            console.error('Failed to fetch or parse available models:', response);
+            allAvailableModels = []; // Default to empty list on error
+             if(availableModelsListDiv) availableModelsListDiv.innerHTML = '<p>Error loading models.</p>';
+        }
+    } catch (error) {
+        console.error('Error in fetchAvailableModels:', error);
+        allAvailableModels = [];
+        if(availableModelsListDiv) availableModelsListDiv.innerHTML = '<p>Error loading models.</p>';
+        ErrorDisplay.showError('Could not fetch available models.', error);
+    }
+    renderAvailableModels();
+    renderSelectedModels(); // Initial render for selected models (likely empty)
+}
+
+// Event listener for the model filter input
+if (modelFilterInput) {
+    modelFilterInput.addEventListener('input', (event) => {
+        renderAvailableModels(event.target.value);
+    });
+}
+
+// Event listener for adding a custom model
+if (addCustomModelButton) {
+    addCustomModelButton.addEventListener('click', () => {
+        if (customModelNameInput) {
+            const customModelId = customModelNameInput.value.trim();
+            if (customModelId && !allAvailableModels.find(m => m.id === customModelId)) {
+                // Add to allAvailableModels so it can be "unselected" from the checkbox list if we wanted to list it there
+                // For now, just add directly to selectedModels.
+                // To make it appear in the "available" list temporarily or persistently would require more state management.
+                // The simplest approach is to treat "custom" models as directly added to selected list.
+                selectedModels.add(customModelId);
+                renderSelectedModels();
+                customModelNameInput.value = ''; // Clear input
+            } else if (customModelId) {
+                // If it exists in allAvailableModels, ensure it's selected
+                selectedModels.add(customModelId);
+                renderAvailableModels(modelFilterInput ? modelFilterInput.value : '');
+                renderSelectedModels();
+                customModelNameInput.value = '';
+            }
+        }
+    });
+}
+
+// Initialize model selection when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Ensure this runs after other DOM content loaded listeners if they modify these containers
+    if (availableModelsListDiv) { // Check if the relevant section is on the page
+        fetchAvailableModels();
+    }
+});
+
+// Function to get selected models (for experiment setup)
+function getSelectedModels() {
+    return Array.from(selectedModels);
+}
+
+// --- Combined Evaluation Tab Logic ---
+// These constants are used by VibeLab methods, so they should be defined in the global scope
+// or passed to VibeLab if a more encapsulated approach is desired.
+// For now, keeping them global as VibeLab methods directly reference them.
+const combinedStartExperimentBtn = document.getElementById('combined-start-experiment-btn');
+const combinedEditExperimentBtn = document.getElementById('combined-edit-experiment-btn');
+const combinedExperimentStatusSpan = document.getElementById('combined-experiment-status');
+
+const experimentProgressCompactDiv = document.getElementById('experiment-progress-compact');
+const experimentProgressFill = experimentProgressCompactDiv ? experimentProgressCompactDiv.querySelector('.progress-fill-overall') : null;
+const experimentProgressText = experimentProgressCompactDiv ? experimentProgressCompactDiv.querySelector('.progress-text-overall') : null;
+
+const toggleDetailedQueueBtn = document.getElementById('toggle-detailed-queue-btn');
+const detailedQueueViewDiv = document.getElementById('detailed-queue-view');
+
+// The event listeners that were here are now correctly placed within VibeLab.initializeEventListeners
+// Remove the following incorrect, globally-scoped event listener attachments:
+// if (combinedStartExperimentBtn) { ... }
+// if (combinedEditExperimentBtn) { ... }
+// if (toggleDetailedQueueBtn) { ... }
+// The extra closing brace } that was here has been removed.

@@ -440,6 +440,19 @@ header p {
     opacity: 0.6;
     transform: rotate(5deg) scale(0.95);
     z-index: 1000;
+    /* Prevent SVG re-rendering during drag */
+    will-change: transform;
+}
+
+.svg-item.dragging .svg-container {
+    /* Preserve SVG rendering during drag */
+    pointer-events: none;
+    transform: translateZ(0); /* Force hardware acceleration */
+}
+
+.svg-container {
+    /* Optimize SVG rendering */
+    contain: layout style;
 }
 
 .rank-badge {
@@ -462,7 +475,7 @@ header p {
 .svg-container {
     text-align: center;
     margin: 10px 0;
-    min-height: 120px;
+    min-height: 200px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -473,7 +486,7 @@ header p {
 
 .svg-container svg {
     max-width: 100%;
-    max-height: 120px;
+    max-height: 180px;
 }
 
 .svg-info {
@@ -1183,3 +1196,83 @@ input:focus, textarea:focus, select:focus {
     min-width: 60px; 
     text-align: right;
 }
+
+
+/* --- BEGIN CSS for .eval-svg-error text overflow --- */
+.eval-svg-error {
+    max-height: 100px; /* Or a height appropriate for the container */
+    overflow-y: auto;  /* Add scrollbar if content exceeds max-height */
+    word-break: break-word; /* Break long words to prevent horizontal overflow */
+    padding: 5px;
+    background-color: #fff0f0; /* Light red background for errors */
+    color: #d8000c; /* Dark red text */
+    border: 1px solid #ffdddd; /* Light red border */
+    border-radius: 4px;
+    font-size: 0.9em;
+    text-align: left; /* Ensure text is aligned left for readability */
+}
+
+/* Ensure the container of .eval-svg-error also behaves well */
+#evaluation-images-grid .svg-image-container {
+    display: flex; /* Helps in centering the error message if it's smaller than container */
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- END CSS for .eval-svg-error text overflow --- */
+/* --- SVG Display for Ranking Grid --- */
+.svg-ranking-grid .svg-item { /* This is the draggable item */
+    position: relative; /* For z-index on hover */
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    cursor: move;
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, z-index 0s 0.2s; /* Delay z-index for smoother hover-off */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.svg-ranking-grid .svg-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35); /* Enhanced shadow */
+    transform: scale(2.2); /* Enlarge on hover */
+    z-index: 100; /* Ensure it's above other items */
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, z-index 0s 0s; /* Immediate z-index on hover-on */
+}
+
+.svg-ranking-grid .svg-item .svg-container { /* Direct parent of SVG */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    width: 100%;
+    min-height: 150px;
+    max-height: 180px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    padding: 5px;
+    box-sizing: border-box;
+    overflow: hidden; /* Ensures letterboxing/pillarboxing by clipping parent */
+}
+
+.svg-ranking-grid .svg-item .svg-container > svg {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+}
+
+/* Dragging styles */
+.svg-ranking-grid .svg-item.dragging {
+    opacity: 0.6;
+    transform: rotate(3deg);
+    z-index: 1000; /* Higher z-index for dragging */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2); /* Simpler shadow when dragging */
+}
+.svg-ranking-grid .svg-item.dragging:hover { /* Override hover scale when dragging */
+    transform: rotate(3deg) scale(1.0); /* No extra scale, just rotation */
+}
+/* --- END SVG Display for Ranking Grid --- */

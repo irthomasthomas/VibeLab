@@ -157,9 +157,42 @@ class ApiService {
     getDocsUrl() {
         return `${this.baseUrl}/docs`;
     }
-}
 
-// Export for browser use
-if (typeof window !== 'undefined') {
-    window.ApiService = ApiService;
+    static async getSavedConsortiums() {
+        try {
+            const response = await fetch('http://localhost:8081/api/consortiums');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
+                console.error('Error fetching saved consortiums:', response.status, errorData);
+                return { success: false, message: errorData.message || `HTTP error ${response.status}` };
+            }
+            const data = await response.json();
+            return { success: true, data: data };
+        } catch (error) {
+            console.error('Network or other error in getSavedConsortiums:', error);
+            return { success: false, message: error.message || 'Network error' };
+        }
+    }
+
+    static async getAvailableModels() {
+        try {
+            const response = await fetch('http://localhost:8081/api/available-models');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
+                console.error('Error fetching available models:', response.status, errorData);
+                return { success: false, message: errorData.message || `HTTP error ${response.status}`, data: [] };
+            }
+            const data = await response.json();
+            // Expect data to be an array of objects like { id: "model-id", name: "Model Name" }
+            if (Array.isArray(data)) {
+                return { success: true, data: data };
+            } else {
+                console.error('Invalid format for available models:', data);
+                return { success: false, message: 'Invalid format for available models', data: [] };
+            }
+        } catch (error) {
+            console.error('Network or other error in getAvailableModels:', error);
+            return { success: false, message: error.message || 'Network error', data: [] };
+        }
+    }
 }
