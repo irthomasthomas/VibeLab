@@ -9,7 +9,7 @@ import logging
 import os
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor # Keep for now, FastAPI might use its own executor or share
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 
@@ -21,6 +21,7 @@ import llm
 
 from database_manager import DatabaseManager
 from prompt_service import PromptService # Corrected import
+from llm_interface import execute_llm_call_async, llm_executor # Import llm_executor if FastAPI will share it
 
 # Configure logging
 logging.basicConfig(
@@ -46,7 +47,6 @@ app.add_middleware(
 )
 
 # Increased thread pool for better parallel processing
-executor = ThreadPoolExecutor(max_workers=os.cpu_count() * 2 or 4) # More dynamic worker count
 
 # Database and prompt service instances
 db = DatabaseManager() # Default path "data/vibelab_research.db"
@@ -125,40 +125,6 @@ def validate_prompt_type(prompt_type: str) -> str:
     logger.info(f"Validating prompt_type: '{prompt_type}' -> '{clean_type}'")
     return clean_type
 
-async def execute_llm_python_api_async(model_alias: str, prompt_text: str, conversation_id: Optional[str] = None) -> Tuple[str, int, Optional[str]]:
-    """Asynchronously execute LLM using Python API for better performance"""
-    logger.info(f"Executing LLM model '{model_alias}' via Python API. Prompt length: {len(prompt_text)}")
-    loop = asyncio.get_event_loop()
-    
-    def _blocking_llm_call():
-        start_time = time.time()
-        model_instance = llm.get_model(model_alias) # This might block
-        if not model_instance:
-            raise Exception(f"Model '{model_alias}' not found by llm library")
-        
-        if conversation_id:
-            response = model_instance.prompt(prompt_text, conversation_id=conversation_id) # This blocks
-        else:
-            response = model_instance.prompt(prompt_text) # This blocks
-        
-        generation_time_ms = int((time.time() - start_time) * 1000)
-        output_text = response.text()
-        
-        updated_conv_id = None
-        if hasattr(response, 'conversation') and response.conversation and hasattr(response.conversation, 'id'):
-            updated_conv_id = response.conversation.id
-        elif hasattr(response, 'conversation_id'): # Fallback
-             updated_conv_id = response.conversation_id
-        
-        logger.info(f"LLM API call successful for model {model_alias}. Output length: {len(output_text)}, Time: {generation_time_ms}ms")
-        return output_text, generation_time_ms, updated_conv_id
-
-    try:
-        return await loop.run_in_executor(executor, _blocking_llm_call)
-    except Exception as e:
-        logger.error(f"Error executing llm via Python API for model {model_alias}: {e}")
-        # Re-raise as a more specific error or handle appropriately
-        raise Exception(f"LLM API Error: {str(e)}")
 
 
 # ==================== API Endpoints ====================
@@ -273,7 +239,7 @@ async def delete_template_api(template_id: str):
 @app.post("/api/v1/generate", response_model=GenerationResponse) # Kept versioned endpoint
 async def generate_content(request_data: GenerationRequest): # Changed to request_data for clarity
     try:
-        output, generation_time, new_conv_id = await execute_llm_python_api_async(
+        output, generation_time, new_conv_id = await execute_llm_call_async(
             request_data.model,
             request_data.prompt,
             request_data.conversation_id
