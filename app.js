@@ -596,16 +596,16 @@ class VibeLab {
         }
 
         try {
-            console.log(\`Submitting \${evaluationsToSubmit.length} rankings for experiment \${this.currentExperiment.id}...\`);
+            console.log(`Submitting ${evaluationsToSubmit.length} rankings for experiment ${this.currentExperiment.id}...`);
             const response = await this.apiService.submitEvaluations(this.currentExperiment.id, evaluationsToSubmit);
             
             if (response.errors && response.errors.length > 0) {
                 if (typeof vlWarning === 'function') {
-                    vlWarning("Submission Issues", \`\${response.message || 'Some rankings failed to save.'} (\${response.errors.length} errors)\`);
+                    vlWarning("Submission Issues", `${response.message || 'Some rankings failed to save.'} (${response.errors.length} errors)`);
                 }
                 console.error("Errors during ranking submission:", response.errors);
                 response.errors.forEach(err => {
-                    if(typeof vlError === 'function') vlError(\`Save Rank Error (ID: \${err.generation_id})\`, err.error);
+                    if(typeof vlError === 'function') vlError(`Save Rank Error (ID: ${err.generation_id})`, err.error);
                 });
             } else if (response.message) { 
                  if (typeof vlSuccess === 'function') vlSuccess("Rankings Saved", response.message);
