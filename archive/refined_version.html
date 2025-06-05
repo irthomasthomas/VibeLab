@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeLab - Refined Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --grid-gap: 1.5rem;
+            --svg-min-size: 280px;
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            color: #64748b;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .workspace {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .prompt-box {
+            margin-bottom: 2.5rem;
+            text-align: center;
+        }
+        
+        .prompt-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        
+        .prompt-text {
+            font-style: italic;
+            background: #f0f9ff;
+            display: inline-block;
+            padding: 12px 20px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            color: #1e293b;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(calc(var(--svg-min-size) + 50px), 1fr));
+            gap: var(--grid-gap);
+            margin-bottom: 3rem;
+            justify-content: center;
+        }
+        
+        .svg-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            cursor: move;
+            border: 2px solid transparent;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .svg-container:hover {
+            border-color: #3b82f6;
+        }
+        
+        .svg-container.dragging {
+            opacity: 0.7;
+            transform: rotate(3deg);
+            z-index: 100;
+        }
+        
+        .svg-container.keyboard-selected {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            box-shadow: 0 0 0 3px #dbeafe;
+        }
+        
+        .svg-preview {
+            height: 280px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .svg-preview svg {
+            width: 260px;
+            height: 220px;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        .shortcut-hint {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background: #3b82f6;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .ranking-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+        
+        .ranking-instructions {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        
+        .ranking-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .ranking-slot {
+            min-height: 180px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .ranking-slot.empty {
+            border: 3px dashed #cbd5e1;
+            background: #f8fafc;
+        }
+        
+        .ranking-slot.filled {
+            background: white;
+            border: 3px solid #cbd5e1;
+        }
+        
+        .ranking-slot.rank-1 { border-color: #10b981; }
+        .ranking-slot.rank-2 { border-color: #f59e0b; }
+        .ranking-slot.rank-3 { border-color: #ef4444; }
+        .ranking-slot.rank-4 { border-color: #6b7280; }
+        
+        .ranking-slot.drag-over {
+            background: #e0f2fe;
+        }
+        
+        .slot-label {
+            font-weight: 700;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .slot-icon {
+            margin-right: 0.75rem;
+            font-size: 1.6rem;
+        }
+        
+        .rank-1 .slot-icon { color: #10b981; }
+        .rank-2 .slot-icon { color: #f59e0b; }
+        .rank-3 .slot-icon { color: #ef4444; }
+        .rank-4 .slot-icon { color: #6b7280; }
+        
+        .technique-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #475569;
+            margin-top: 1rem;
+            text-align: center;
+            font-style: italic;
+        }
+        
+        .keyboard-shortcuts {
+            background: #f0f9ff;
+            border: 2px dashed #38bdf8;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 2rem;
+            text-align: center;
+        }
+        
+        .keys {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .key {
+            background: white;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-weight: 700;
+            position: relative;
+        }
+        
+        .key::after {
+            content: "";
+            display: block;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.8rem;
+            font-weight: normal;
+            margin-top: 0.5rem;
+        }
+        
+        .key[data-key="1"]::after { content: "Best"; }
+        .key[data-key="2"]::after { content: "Good"; }
+        .key[data-key="3"]::after { content: "Fair"; }
+        .key[data-key="4"]::after { content: "Poor"; }
+        
+        .analytics-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .chart-container {
+            margin: 2rem 0;
+            height: 400px;
+            position: relative;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #1e293b;
+            line-height: 1.2;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 3rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.9rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.1rem;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .btn-icon {
+            margin-right: 0.75rem;
+            font-size: 1.2rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 2px solid #cbd5e1;
+        }
+        
+        .btn-analytics {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+        }
+        
+        .btn-primary:hover { box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4); }
+        .btn-analytics:hover { box-shadow: 0 6px 15px rgba(139, 92, 246, 0.4); }
+        
+        .progress-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            min-width: 180px;
+            z-index: 100;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        
+        .status-value {
+            font-weight: 600;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 VibeLab Refined</h1>
+            <p>Optimal SVGs • Inline Technique Reveal • Auto-next Workflow • Visual Analytics</p>
+        </div>
+
+        <div class="workspace">
+            <div class="prompt-box">
+                <div class="prompt-label">Current Evaluation Task:</div>
+                <div class="prompt-text" id="currentPrompt">"Photorealistic landscape with mountains, river, forest, and sunset"</div>
+            </div>
+
+            <div class="comparison-grid" id="comparisonGrid">
+                <div class="svg-container" data-output="A" data-technique="baseline">
+                    <div class="shortcut-hint">1</div>
+                    <div class="svg-preview" id="svgA">
+                        <!-- SVG will be inserted here -->
+                    </div>
+                </div>
+                <div class="svg-container" data-output="B" data-technique="few-shot">
+                    <div class="shortcut-hint">2</div>
+                    <div class="svg-preview" id="svgB">
+                        <!-- SVG will be inserted here -->
+                    </div>
+                </div>
+                <div class="svg-container" data-output="C" data-technique="chain-of-thought">
+                    <div class="shortcut-hint">3</div>
+                    <div class="svg-preview" id="svgC">
+                        <!-- SVG will be inserted here -->
+                    </div>
+                </div>
+                <div class="svg-container" data-output="D" data-technique="role-playing">
+                    <div class="shortcut-hint">4</div>
+                    <div class="svg-preview" id="svgD">
+                        <!-- SVG will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ranking-section">
+            <div class="section-title">Rank the Results</div>
+            <div class="ranking-instructions">
+                Drag outputs or use number keys (1-4) to rank. Submit when ranking is complete.
+            </div>
+            
+            <div class="ranking-slots">
+                <div class="ranking-slot rank-1 empty" data-rank="1">
+                    <div class="slot-label">
+                        <span class="slot-icon">🥇</span> Best
+                    </div>
+                    <div class="technique-name" id="rank1Tech"></div>
+                </div>
+                <div class="ranking-slot rank-2 empty" data-rank="2">
+                    <div class="slot-label">
+                        <span class="slot-icon">🥈</span> Good
+                    </div>
+                    <div class="technique-name" id="rank2Tech"></div>
+                </div>
+                <div class="ranking-slot rank-3 empty" data-rank="3">
+                    <div class="slot-label">
+                        <span class="slot-icon">🥉</span> Fair
+                    </div>
+                    <div class="technique-name" id="rank3Tech"></div>
+                </div>
+                <div class="ranking-slot rank-4 empty" data-rank="4">
+                    <div class="slot-label">
+                        <span class="slot-icon">❌</span> Poor
+                    </div>
+                    <div class="technique-name" id="rank4Tech"></div>
+                </div>
+            </div>
+
+            <div class="keyboard-shortcuts">
+                <div>Press number keys to rank selected SVG:</div>
+                <div class="keys">
+                    <div class="key" data-key="1">1</div>
+                    <div class="key" data-key="2">2</div>
+                    <div class="key" data-key="3">3</div>
+                    <div class="key" data-key="4">4</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="analytics-panel">
+            <div class="section-title">Performance Analytics</div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">24</div>
+                    <div class="stat-label">Completed Evaluations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">8.2s</div>
+                    <div class="stat-label">Avg Time per Eval</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">64%</div>
+                    <div class="stat-label">Chain-of-Thought Wins</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">18%</div>
+                    <div class="stat-label">Baseline Success Rate</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="winRateChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn btn-primary" id="submitBtn">
+                <span class="btn-icon">✅</span> Submit & Next Batch
+            </button>
+            <button class="btn btn-analytics" id="downloadBtn">
+                <span class="btn-icon">💾</span> Download Data
+            </button>
+            <button class="btn btn-secondary" id="resetBtn">
+                <span class="btn-icon">🔄</span> Reset Session
+            </button>
+        </div>
+    </div>
+
+    <div class="progress-indicator">
+        <div class="status-item">
+            <span>Evaluations:</span>
+            <span class="status-value"><span id="evalCount">0</span>/<span id="evalTotal">50</span></span>
+        </div>
+        <div class="status-item">
+            <span>Time Saved:</span>
+            <span class="status-value">37 minutes</span>
+        </div>
+        <div class="status-item">
+            <span>Batch:</span>
+            <span class="status-value">Landscapes</span>
+        </div>
+        <div class="status-item">
+            <span>Mode:</span>
+            <span class="status-value">Blind Ranking</span>
+        </div>
+    </div>
+
+    <script>
+        // Sample SVG data for multi-set rotation
+        const svgSets = [
+            {
+                id: "nature",
+                prompt: "Photorealistic landscape with mountains, river, forest, and sunset",
+                svgs: {
+                    A: `<svg viewBox="0 0 300 200"><rect width="300" height="200" fill="#87CEEB"/><g transform="translate(50,50)">
+                            <polygon points="0,150 50,50 100,150" fill="#2F4F4F"/>
+                            <rect width="30" height="100" x="35" y="50" fill="#8B4513"/>
+                        </g><g transform="translate(180,60)">
+                            <circle cx="50" cy="30" r="40" fill="#FF8C00"/>
+                            <rect width="15" height="80" x="42" y="70" fill="#A52A2A"/>
+                        </g><ellipse cx="90" cy="160" rx="100" ry="30" fill="#3CB371"/></svg>`,
+                    B: `<svg viewBox="0 0 300 200"><radialGradient id="skyGrad" cx="50%" cy="0%">
+                            <stop offset="0%" stop-color="#FFD700"/>
+                            <stop offset="100%" stop-color="#FF6347"/>
+                        </radialGradient>
+                        <rect width="300" height="200" fill="url(#skyGrad)"/>
+                        <polygon points="50,100 150,50 250,100 200,120" fill="#4B0082" opacity="0.7"/>
+                        <rect width="250" height="40" y="160" fill="#2E8B57"/>
+                        <circle cx="80" cy="130" r="30" fill="#32CD32"/></svg>`,
+                    C: `<svg viewBox="0 0 300 200"><rect width="300" height="200" fill="#4682B4"/>
+                        <rect width="300" height="60" y="140" fill="#8FBC8F"/>
+                        <polygon points="0,140 100,40 200,140" fill="#556B2F" opacity="0.9"/>
+                        <circle cx="220" cy="70" r="40" fill="#FFB6C1"/>
+                        <path d="M50,100 Q100,50 150,100 T250,80" stroke="#FFD700" stroke-width="5" fill="none"/>
+                        <circle cx="180" cy="40" r="10" fill="#FFA500"/></svg>`,
+                    D: `<svg viewBox="0 0 300 200"><defs>
+                            <radialGradient id="grad1" cx="30%" cy="30%">
+                                <stop offset="0%" stop-color="#FF6347"/>
+                                <stop offset="100%" stop-color="#8A2BE2"/>
+                            </radialGradient>
+                        </defs>
+                        <rect width="300" height="200" fill="url(#grad1)"/>
+                        <circle cx="250" cy="50" r="30" fill="#FFD700"/>
+                        <polygon points="0,200 150,30 300,200" fill="#2F4F4F"/>
+                        <circle cx="100" cy="80" r="15" fill="#F8F8FF"/>
+                        <circle cx="70" cy="100" r="12" fill="#F8F8FF"/></svg>`
+                }
+            },
+            {
+                id: "urban",
+                prompt: "Modern cityscape at night with skyscrapers, bridges and lights",
+                svgs: {
+                    A: `<svg viewBox="0 0 300 200"><rect width="300" height="200" fill="#191970"/>
+                        <g transform="translate(30,20)">
+                            <rect width="30" height="100" fill="#708090"/>
+                            <rect width="50" height="80" x="40" y="20" fill="#778899"/>
+                            <rect width="40" height="120" x="100" y="0" fill="#2F4F4F"/>
+                        </g>
+                        <circle cx="200" cy="30" r="10" fill="#FFFF00"/>
+                        <circle cx="230" cy="15" r="5" fill="#FFFF00"/>
+                        <rect width="250" height="10" y="190" fill="#696969"/>
+                        <rect width="3" height="20" x="150" y="180" fill="#C0C0C0"/></svg>`,
+                    B: `<svg viewBox="0 0 300 200"><linearGradient id="nightSky" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#000033"/>
+                            <stop offset="100%" stop-color="#000066"/>
+                        </linearGradient>
+                        <rect width="300" height="200" fill="url(#nightSky)"/>
+                        <rect width="20" height="150" x="40" y="50" fill="#A9A9A9"/>
+                        <rect width="35" height="120" x="70" y="80" fill="#808080"/>
+                        <rect width="25" height="140" x="115" y="60" fill="#696969"/>
+                        <circle cx="230" cy="45" r="5" fill="#FFD700"/>
+                        <circle cx="200" cy="25" r="3" fill="#FFD700"/></svg>`,
+                    C: `<svg viewBox="0 0 300 200"><rect width="300" height="200" fill="#000080"/>
+                        <rect width="15" height="130" x="50" y="70" fill="#708090"/>
+                        <rect width="40" height="110" x="80" y="90" fill="#A9A9A9"/>
+                        <rect width="30" height="150" x="130" y="50" fill="#2F4F4F"/>
+                        <circle cx="230" cy="60" r="12" fill="#FFFF00"/>
+                        <circle cx="210" cy="30" r="8" fill="#FFA500"/>
+                        <rect width="5" height="20" x="180" y="180" fill="#C0C0C0"/>
+                        <rect width="250" height="10" y="190" fill="#D3D3D3"/></svg>`,
+                    D: `<svg viewBox="0 0 300 200"><defs>
+                            <linearGradient id="skylineGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stop-color="#000050"/>
+                                <stop offset="100%" stop-color="#000020"/>
+                            </linearGradient>
+                        </defs>
+                        <rect width="300" height="200" fill="url(#skylineGrad)"/>
+                        <g transform="translate(30,40)">
+                            <rect width="25" height="160" fill="#708090"/>
+                            <rect width="35" height="140" x="40" y="20" fill="#A9A9A9"/>
+                            <rect width="30" height="180" x="90" y="0" fill="#2F4F4F"/>
+                            <rect width="45" height="130" x="135" y="30" fill="#696969"/>
+                        </g>
+                        <rect width="5" height="20" x="220" y="170" fill="#C0C0C0" transform="rotate(5)"/>
+                        <ellipse cx="250" cy="185" rx="140" ry="15" fill="#363636"/>
+                        <circle cx="180" cy="80" r="7" fill="#FF1493"/>
+                        <circle cx="230" cy="45" r="4" fill="#00BFFF"/></svg>`
+                }
+            }
+        ];
+
+        let rankings = {};
+        let currentSetIndex = 0;
+        let evaluationCount = 0;
+        let currentSVGSet = null;
+        let selectedSVG = null;
+        const MAX_EVALUATIONS = 8; // For demo
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSVGSet(0);
+            setupDragAndDrop();
+            setupEventListeners();
+            renderWinRateChart();
+        });
+
+        function loadSVGSet(index) {
+            currentSetIndex = index;
+            currentSVGSet = svgSets[index];
+            
+            // Set prompt
+            document.getElementById('currentPrompt').textContent = currentSVGSet.prompt;
+            
+            // Render SVGs
+            document.getElementById('svgA').innerHTML = currentSVGSet.svgs.A;
+            document.getElementById('svgB').innerHTML = currentSVGSet.svgs.B;
+            document.getElementById('svgC').innerHTML = currentSVGSet.svgs.C;
+            document.getElementById('svgD').innerHTML = currentSVGSet.svgs.D;
+            
+            // Update UI
+            document.getElementById('evalCount').textContent = evaluationCount;
+            resetRanking();
+        }
+
+        function setupDragAndDrop() {
+            document.querySelectorAll('.svg-container').forEach(container => {
+                container.addEventListener('dragstart', (e) => {
+                    container.classList.add('dragging');
+                    selectedSVG = container.dataset.output;
+                });
+                
+                container.addEventListener('dragend', () => {
+                    document.querySelectorAll('.svg-container').forEach(c => 
+                        c.classList.remove('dragging')
+                    );
+                });
+                
+                // Click to select SVG for keyboard control
+                container.addEventListener('click', () => {
+                    document.querySelectorAll('.svg-container').forEach(c => 
+                        c.classList.remove('keyboard-selected')
+                    );
+                    container.classList.add('keyboard-selected');
+                    selectedSVG = container.dataset.output;
+                });
+            });
+
+            document.querySelectorAll('.ranking-slot').forEach(slot => {
+                slot.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    slot.classList.add('drag-over');
+                });
+                
+                slot.addEventListener('dragleave', () => {
+                    slot.classList.remove('drag-over');
+                });
+                
+                slot.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    slot.classList.remove('drag-over');
+                    assignRanking(slot.dataset.rank, selectedSVG);
+                });
+            });
+        }
+
+        function setupEventListeners() {
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (/^[1-4]$/.test(e.key) && selectedSVG) {
+                    assignRanking(e.key, selectedSVG);
+                }
+            });
+
+            // Submit button
+            document.getElementById('submitBtn').addEventListener('click', submitRanking);
+            
+            // Reset button
+            document.getElementById('resetBtn').addEventListener('click', resetRanking);
+        }
+
+        function assignRanking(rank, outputId) {
+            // Clear previous rankings for this output
+            Object.keys(rankings).forEach(key => {
+                if (rankings[key] === outputId) {
+                    delete rankings[key];
+                }
+            });
+            
+            // Add new ranking
+            rankings[rank] = outputId;
+            
+            // Update UI
+            const slot = document.querySelector(`.ranking-slot[data-rank="${rank}"]`);
+            const techniqueName = document.querySelector(`[data-output="${outputId}"]`).dataset.technique;
+            
+            slot.innerHTML = `
+                <div class="slot-label">
+                    <span class="slot-icon">${getRankIcon(rank)}</span> ${getRankLabel(rank)}
+                </div>
+                <div class="svg-preview"></div>
+                <div class="technique-name">${titleCase(techniqueName.replaceAll('-', ' '))}</div>
+            `;
+            
+            // Add the SVG to the slot
+            const svg = document.querySelector(`[data-output="${outputId}"] svg`).cloneNode(true);
+            svg.style.width = '100px';
+            svg.style.height = '80px';
+            slot.querySelector('.svg-preview').appendChild(svg);
+            
+            slot.classList.remove('empty');
+            slot.classList.add('filled');
+        }
+
+        function resetRanking() {
+            rankings = {};
+            document.querySelectorAll('.ranking-slot').forEach(slot => {
+                slot.innerHTML = `
+                    <div class="slot-label">
+                        <span class="slot-icon">${getRankIcon(slot.dataset.rank)}</span> ${getRankLabel(slot.dataset.rank)}
+                    </div>
+                    <div class="technique-name"></div>
+                `;
+                slot.classList.add('empty');
+                slot.classList.remove('filled');
+            });
+        }
+
+        function submitRanking() {
+            if (Object.keys(rankings).length < 4) {
+                alert('Please rank all SVGs before submitting.');
+                return;
+            }
+            
+            // In a real app: Store the ranking data
+            
+            // Update evaluation count
+            evaluationCount++;
+            document.getElementById('evalCount').textContent = evaluationCount;
+            
+            // Auto move to next set
+            const nextIndex = (currentSetIndex + 1) % svgSets.length;
+            loadSVGSet(nextIndex);
+            
+            if (evaluationCount >= MAX_EVALUATIONS) {
+                alert('Evaluation session completed!');
+                // Would enable download button
+            }
+        }
+
+        function renderWinRateChart() {
+            const ctx = document.getElementById('winRateChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Chain-of-Thought', 'Role-Playing', 'Few-Shot', 'Baseline'],
+                    datasets: [{
+                        label: 'Win Rate (%)',
+                        data: [63, 45, 37, 18],
+                        backgroundColor: ['#3b82f6', '#8b5cf6', '#ef4444', '#10b981'],
+                        borderColor: ['#1d4ed8', '#7c3aed', '#dc2626', '#047857'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Win Rate (%)'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Technique'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Helper functions
+        function getRankIcon(rank) {
+            switch(rank) {
+                case '1': return '🥇';
+                case '2': return '🥈';
+                case '3': return '🥉';
+                case '4': return '❌';
+                default: return '';
+            }
+        }
+
+        function getRankLabel(rank) {
+            switch(rank) {
+                case '1': return 'Best';
+                case '2': return 'Good';
+                case '3': return 'Fair';
+                case '4': return 'Poor';
+                default: return '';
+            }
+        }
+
+        function titleCase(str) {
+            return str.replace(/\w\S*/g, txt => 
+                txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+            );
+        }
+    </script>
+</body>
+</html>

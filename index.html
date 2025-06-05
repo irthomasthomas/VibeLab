@@ -3,202 +3,924 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VibeLab - Prompt Variation Testing</title>
-    <link rel="stylesheet" href="style.css">
+    <title>VibeLab - Complete Navigation</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --grid-gap: 1.5rem;
+            --svg-size: 280px;
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+        
+        .workspace {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .prompt-box {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .prompt-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        
+        .prompt-text {
+            font-style: italic;
+            background: #f0f9ff;
+            display: inline-block;
+            padding: 12px 20px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            color: #1e293b;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: var(--grid-gap);
+            margin-bottom: 2rem;
+            height: 600px;
+        }
+        
+        .svg-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            cursor: move;
+            border: 3px solid transparent;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .svg-container:hover {
+            border-color: #93c5fd;
+        }
+        
+        .svg-container.selected {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .svg-container.dragging {
+            opacity: 0.7;
+            transform: rotate(3deg) scale(1.05);
+            z-index: 100;
+        }
+        
+        .svg-preview {
+            height: var(--svg-size);
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+        }
+        
+        .svg-preview svg {
+            width: 100%;
+            height: 100%;
+            max-width: 260px;
+            max-height: 240px;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        .grid-position {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(34, 197, 94, 0.9);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            font-family: monospace;
+        }
+        
+        .ranking-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+        
+        .ranking-instructions {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        
+        .ranking-slots {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .ranking-slot {
+            min-height: 240px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .ranking-slot.empty {
+            border: 3px dashed #cbd5e1;
+            background: #f8fafc;
+        }
+        
+        .ranking-slot.filled {
+            background: white;
+            border: 3px solid #cbd5e1;
+        }
+        
+        .ranking-slot.rank-1 { border-color: #10b981; }
+        .ranking-slot.rank-2 { border-color: #f59e0b; }
+        .ranking-slot.rank-3 { border-color: #ef4444; }
+        .ranking-slot.rank-4 { border-color: #6b7280; }
+        
+        .ranking-slot.drag-over {
+            background: #e0f2fe;
+            border-style: solid;
+        }
+        
+        .slot-label {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .slot-icon {
+            margin-right: 0.75rem;
+            font-size: 1.6rem;
+        }
+        
+        .rank-1 .slot-icon { color: #10b981; }
+        .rank-2 .slot-icon { color: #f59e0b; }
+        .rank-3 .slot-icon { color: #ef4444; }
+        .rank-4 .slot-icon { color: #6b7280; }
+        
+        .ranking-slot .svg-preview {
+            width: 100%;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .ranking-slot .svg-preview svg {
+            width: 160px;
+            height: 110px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+        
+        .technique-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #475569;
+            margin-top: 0.5rem;
+            text-align: center;
+            font-style: italic;
+            min-height: 2.5em;
+        }
+        
+        .keyboard-help {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 2px solid #38bdf8;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            text-align: center;
+        }
+        
+        .help-title {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #0c4a6e;
+            margin-bottom: 1rem;
+        }
+        
+        .help-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .help-item {
+            background: white;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid #bae6fd;
+        }
+        
+        .help-key {
+            font-weight: 700;
+            color: #1e40af;
+            font-family: monospace;
+        }
+        
+        .help-nav {
+            background: #dcfce7;
+            border: 1px solid #22c55e;
+        }
+        
+        .help-nav .help-key {
+            color: #166534;
+        }
+        
+        .analytics-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+            display: none;
+        }
+        
+        .chart-container {
+            margin: 2rem 0;
+            height: 400px;
+            position: relative;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #1e293b;
+            line-height: 1.2;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 3rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.9rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.1rem;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .btn-icon {
+            margin-right: 0.75rem;
+            font-size: 1.2rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 2px solid #cbd5e1;
+        }
+        
+        .btn-analytics {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+            box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .progress-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            min-width: 180px;
+            z-index: 100;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        
+        .status-value {
+            font-weight: 600;
+            color: #3b82f6;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>🧪 VibeLab</h1>
-            <p>Test and evaluate virtual few-shot prompt variations</p>
-        </header>
+        <div class="header">
+            <h1>🧪 VibeLab - Complete Interface</h1>
+            <p>Multiple navigation options: Arrow keys • a/b/c/d keys • Click • Drag & drop</p>
+        </div>
 
-        <nav class="tab-nav">
-            <button class="tab-btn active" data-tab="setup">Experiment Setup</button>
-            <button class="tab-btn" data-tab="queue">Generation Queue</button>
-            <button class="tab-btn" data-tab="evaluate">Evaluation</button>
-            <button class="tab-btn" data-tab="results">Results</button>
-        </nav>
+        <div class="workspace">
+            <div class="prompt-box">
+                <div class="prompt-label">Current Evaluation Task:</div>
+                <div class="prompt-text" id="currentPrompt">Loading...</div>
+            </div>
 
-        <!-- Experiment Setup Tab -->
-        <section id="setup-tab" class="tab-content active">
-            <div class="setup-grid">
-                                <div class="setup-section">
-                    <h3>Base Prompts</h3>
-                    
-                    <!-- Template Management -->
-                    <div class="template-management">
-                        <div class="template-selector-row">
-                            <select id="template-selector">
-                                <option value="">Select a template or create custom...</option>
-                            </select>
-                            <button id="load-template">Load Template</button>
-                            <button id="save-as-template">Save as Template</button>
-                        </div>
-                        <div class="template-actions">
-                            <button id="manage-templates">Manage Templates</button>
-                        </div>
+            <div class="comparison-grid" id="comparisonGrid">
+                <div class="svg-container" draggable="true" data-grid-index="0" data-output-id="" data-technique="">
+                    <div class="grid-position">a</div>
+                    <div class="svg-preview"></div>
+                </div>
+                <div class="svg-container" draggable="true" data-grid-index="1" data-output-id="" data-technique="">
+                    <div class="grid-position">b</div>
+                    <div class="svg-preview"></div>
+                </div>
+                <div class="svg-container" draggable="true" data-grid-index="2" data-output-id="" data-technique="">
+                    <div class="grid-position">c</div>
+                    <div class="svg-preview"></div>
+                </div>
+                <div class="svg-container" draggable="true" data-grid-index="3" data-output-id="" data-technique="">
+                    <div class="grid-position">d</div>
+                    <div class="svg-preview"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ranking-section">
+            <div class="section-title">Rank the Results</div>
+            <div class="ranking-instructions">
+                Navigate with arrows or a/b/c/d keys, then press 1-4 to rank
+            </div>
+            
+            <div class="ranking-slots">
+                <div class="ranking-slot rank-1 empty" data-rank="1">
+                    <div class="slot-label">
+                        <span class="slot-icon">🥇</span> Best
                     </div>
-                    
-                    <!-- Dynamic Prompts -->
-                    <div class="prompt-inputs" id="dynamic-prompts">
-                        <!-- Will be populated dynamically -->
-                    </div>
-                    <button id="add-prompt">+ Add Custom Prompt</button>
+                    <div class="svg-preview"></div>
+                    <div class="technique-name"></div>
                 </div>
-                <div class="setup-section">
-                    <h3>Models</h3>
-                    <div class="model-selection">
-                        <label><input type="checkbox" value="anthropic/claude-3-5-sonnet-20241022" checked> Claude 3.5 Sonnet</label>
-                        <label><input type="checkbox" value="gpt-4"> GPT-4</label>
-                        <label><input type="checkbox" value="claude-3-opus-20240229"> Claude 3 Opus</label>
-                        <input type="text" id="custom-model" placeholder="Custom model name">
-                        <button id="add-model">+ Add Custom</button>
+                <div class="ranking-slot rank-2 empty" data-rank="2">
+                    <div class="slot-label">
+                        <span class="slot-icon">🥈</span> Good
                     </div>
+                    <div class="svg-preview"></div>
+                    <div class="technique-name"></div>
                 </div>
-
-                <div class="setup-section">
-                    <h3>Prompt Variations</h3>
-                    <div class="variation-config">
-                        <label><input type="checkbox" checked> No few-shot (baseline)</label>
-                        <label><input type="checkbox" checked> Real few-shot examples</label>
-                        <label><input type="checkbox" checked> "This section contains N examples..."</label>
-                        <label><input type="checkbox" checked> "Based on N examples below..."</label>
-                        <label><input type="checkbox" checked> [Example 1][Example 2]...[Example N]</label>
-                        <label><input type="checkbox" checked> "Following ten brilliant examples..."</label>
-                        <label><input type="checkbox" checked> "Drawing from extensive training..."</label>
-
-                        <div class="n-values">
-                            <label>N values: <input type="text" value="3,5,10" id="n-values"></label>
-                        </div>
-
-                        <div class="custom-variations">
-                            <h4>Custom Variations</h4>
-                            <textarea id="custom-variations" placeholder="Enter custom few-shot variations, one per line"></textarea>
-                        </div>
+                <div class="ranking-slot rank-3 empty" data-rank="3">
+                    <div class="slot-label">
+                        <span class="slot-icon">🥉</span> Fair
                     </div>
+                    <div class="svg-preview"></div>
+                    <div class="technique-name"></div>
                 </div>
+                <div class="ranking-slot rank-4 empty" data-rank="4">
+                    <div class="slot-label">
+                        <span class="slot-icon">❌</span> Poor
+                    </div>
+                    <div class="svg-preview"></div>
+                    <div class="technique-name"></div>
+                </div>
+            </div>
 
-                <div class="setup-section">
-                    <h3>Generation Settings</h3>
-                    <div class="gen-settings">
-                        <label>SVGs per variation: <input type="number" id="svgs-per-var" value="4" min="1" max="10"></label>
-                        <label>Max parallel jobs: <input type="number" id="max-parallel" value="3" min="1" max="10"></label>
-                        <label>Experiment name: <input type="text" id="experiment-name" placeholder="Auto-generated if empty"></label>
-                        <label><input type="checkbox" id="skip-baseline"> Skip baseline if exists</label>
-                        <button id="start-experiment" class="primary-btn">Create Experiment</button>
+            <div class="keyboard-help">
+                <div class="help-title">⌨️ Keyboard Controls</div>
+                <div class="help-grid">
+                    <div class="help-item help-nav">
+                        <span class="help-key">← → ↑ ↓</span> Navigate between SVGs
+                    </div>
+                    <div class="help-item help-nav">
+                        <span class="help-key">a b c d</span> Jump to specific SVG
+                    </div>
+                    <div class="help-item">
+                        <span class="help-key">1 2 3 4</span> Rank selected SVG
+                    </div>
+                    <div class="help-item">
+                        <span class="help-key">Enter</span> Submit ranking
+                    </div>
+                    <div class="help-item">
+                        <span class="help-key">r</span> Reset rankings
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Generation Queue Tab -->
-        <section id="queue-tab" class="tab-content">
-            <div class="queue-controls">
-                <button id="start-queue" class="primary-btn" disabled>Start Generation</button>
-                <button id="pause-queue" disabled>Pause</button>
-                <button id="clear-queue" disabled>Clear Queue</button>
-                <span id="queue-status">No experiment loaded</span>
-            </div>
-
-            <div class="queue-list" id="queue-list">
-                <!-- Queue items will be populated here -->
-            </div>
-        </section>
-
-        <!-- Evaluation Tab -->
-        <section id="evaluate-tab" class="tab-content">
-            <div class="eval-controls">
-                <select id="eval-prompt-filter">
-                    <option value="all">All Prompts</option>
-                </select>
-                <select id="eval-view-mode">
-                    <option value="per-prompt">Per Prompt Ranking</option>
-                    <option value="global">Global Comparison</option>
-                </select>
-                <button id="reset-rankings">Reset Rankings</button>
-                <select id="analysis-mode">
-                    <option value="simple">Simple Average Ranking</option>
-                    <option value="statistical">Statistical Analysis</option>
-                </select>
-                <label><input type="checkbox" id="hide-details" checked> Hide details (images only)</label>
-            </div>
-
-            <div class="ranking-area">
-                <div id="ranking-instructions" class="instructions">
-                    Drag and drop SVGs to rank them from best (top) to worst (bottom)
+        <div class="analytics-panel" id="analyticsPanel">
+            <div class="section-title">Performance Analytics</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalEvals">0</div>
+                    <div class="stat-label">Completed Evaluations</div>
                 </div>
-                <div id="statistics-panel" class="statistics-panel" style="display: none;">
-                    <!-- Statistics will be displayed here -->
+                <div class="stat-card">
+                    <div class="stat-value" id="avgTime">0s</div>
+                    <div class="stat-label">Avg Time per Eval</div>
                 </div>
-                <div id="svg-grid" class="svg-ranking-grid">
-                    <!-- SVGs will be populated here for ranking -->
+                <div class="stat-card">
+                    <div class="stat-value" id="topTech">N/A</div>
+                    <div class="stat-label">Top Technique</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="baselineRate">0%</div>
+                    <div class="stat-label">Baseline Win Rate</div>
                 </div>
             </div>
-        </section>
-
-        <!-- Results Tab -->
-        <section id="results-tab" class="tab-content">
-            <div class="results-controls">
-                <button id="export-results">Export to JSONL</button>
-                <button id="save-experiment">Save Experiment</button>
-                <button id="load-experiment">Load Experiment</button>
+            <div class="chart-container">
+                <canvas id="winRateChart"></canvas>
             </div>
-
-            <div class="results-summary">
-                <h3>Experiment Summary</h3>
-                <div id="summary-stats"></div>
-            </div>
-
-            <div class="results-table">
-                <table id="results-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Prompt</th>
-                            <th>Variation Type</th>
-                            <th>Model</th>
-                            <th>Generated</th>
-                            <th>Quality Score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Results will be populated here -->
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="experiment-overview">
-                <h3>Experiment Timeline</h3>
-                <div id="experiment-grid">
-                    <!-- Timeline will be populated here -->
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <script src="app.js"></script>
-
-    <!-- Template Management Modal -->
-    <div id="template-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h3>Manage Templates</h3>
-            <div id="template-list">
-                <!-- Will be populated dynamically -->
-            </div>
-            <div class="template-form">
-                <h4>Create New Template</h4>
-                <input type="text" id="new-template-name" placeholder="Template name">
-                <textarea id="new-template-prompt" placeholder="Prompt text"></textarea>
-                <input type="text" id="new-template-tags" placeholder="Tags (comma-separated)">
-                <label>
-                    <input type="checkbox" id="new-template-animated"> Animated
-                </label>
-                <button id="create-template">Create Template</button>
-            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="btn btn-primary" id="submitBtn">
+                <span class="btn-icon">✅</span> Submit & Next Batch
+            </button>
+            <button class="btn btn-analytics" id="analyticsBtn">
+                <span class="btn-icon">📊</span> Toggle Analytics
+            </button>
+            <button class="btn btn-secondary" id="resetBtn">
+                <span class="btn-icon">🔄</span> Reset Session
+            </button>
         </div>
     </div>
 
+    <div class="progress-indicator">
+        <div class="status-item">
+            <span>Evaluations:</span>
+            <span class="status-value"><span id="evalCount">0</span>/<span id="evalTotal">8</span></span>
+        </div>
+        <div class="status-item">
+            <span>Batch:</span>
+            <span class="status-value" id="batchName">Loading...</span>
+        </div>
+        <div class="status-item">
+            <span>Selected:</span>
+            <span class="status-value" id="selectedIndicator">None</span>
+        </div>
+    </div>
+
+    <script>
+        // Sample data
+        const batches = {
+            "nature": {
+                prompt: "Photorealistic landscape with mountains, river, forest, and sunset",
+                svgs: [
+                    { id: "A", technique: "baseline", svg: `<svg viewBox="0 0 200 150"><rect width="200" height="150" fill="#87CEEB"/><polygon points="0,150 50,50 100,150" fill="#A0522D"/><circle cx="150" cy="40" r="20" fill="#FFD700"/><rect y="100" width="200" height="50" fill="#228B22"/></svg>` },
+                    { id: "B", technique: "few-shot", svg: `<svg viewBox="0 0 200 150"><rect width="200" height="150" fill="#ADD8E6"/><path d="M0 100 Q 50 50 100 100 T 200 100" fill="#6B8E23"/><ellipse cx="160" cy="30" rx="25" ry="15" fill="#FFA500"/><rect y="120" width="200" height="30" fill="#32CD32"/></svg>` },
+                    { id: "C", technique: "chain-of-thought", svg: `<svg viewBox="0 0 200 150"><rect width="200" height="150" fill="#B0E0E6"/><polygon points="10,120 60,20 110,120" fill="#D2B48C"/><ellipse cx="170" cy="20" rx="15" ry="10" fill="#FFDEAD"/><rect y="110" width="200" height="40" fill="#90EE90"/></svg>` },
+                    { id: "D", technique: "role-playing", svg: `<svg viewBox="0 0 200 150"><linearGradient id="sky1" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FF7F50"/><stop offset="100%" stop-color="#1E90FF"/></linearGradient><rect width="200" height="150" fill="url(#sky1)"/><path d="M0 150 L0 90 C 50 70, 150 70, 200 90 L200 150 Z" fill="#20B2AA"/><circle cx="100" cy="25" r="12" fill="#FFFFE0"/></svg>` }
+                ]
+            },
+            "urban": {
+                prompt: "Modern cityscape at night with skyscrapers, bridges and lights",
+                svgs: [
+                    { id: "A", technique: "baseline", svg: `<svg viewBox="0 0 200 150"><rect width="200" height="150" fill="#000033"/><rect x="20" y="50" width="30" height="100" fill="#778899"/><rect x="70" y="30" width="40" height="120" fill="#A9A9A9"/><circle cx="150" cy="20" r="10" fill="#FFFF00"/></svg>` },
+                    { id: "B", technique: "few-shot", svg: `<svg viewBox="0 0 200 150"><rect width="200" height="150" fill="#191970"/><rect x="10" y="70" width="20" height="80" fill="#D3D3D3"/><rect x="50" y="20" width="25" height="130" fill="#BEBEBE"/><rect x="90" y="50" width="30" height="100" fill="#C0C0C0"/><circle cx="170" cy="40" r="8" fill="#FFD700"/></svg>` },
+                    { id: "C", technique: "chain-of-thought", svg: `<svg viewBox="0 0 200 150"><rect width="200" height="150" fill="#2F4F4F"/><rect x="30" y="10" width="30" height="140" fill="#808080"/><rect x="80" y="40" width="40" height="110" fill="#708090"/><rect x="140" y="60" width="20" height="90" fill="#696969"/><path d="M0 130 Q 100 100 200 130" stroke="#FFFFFF" stroke-width="3" fill="none"/></svg>` },
+                    { id: "D", technique: "role-playing", svg: `<svg viewBox="0 0 200 150"><linearGradient id="night1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0000CD"/><stop offset="100%" stop-color="#4B0082"/></linearGradient><rect width="200" height="150" fill="url(#night1)"/><path d="M10 140 V50 H30 V140 Z M40 140 V20 H70 V140 Z M80 140 V70 H110 V140Z" fill="#C0C0C0" opacity="0.3"/><ellipse cx="150" cy="30" rx="15" ry="8" fill="#FFFACD"/></svg>` }
+                ]
+            }
+        };
+
+        let currentBatchIndex = 0;
+        let currentSelectedIndex = 0;
+        let rankings = {};
+        let sessionData = {
+            evaluations: [],
+            totalEvaluations: 0,
+            startTime: null
+        };
+        let winRateChart = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBatch();
+            setupDragAndDrop();
+            setupEventListeners();
+            renderChart();
+            selectSVG(0); // Start with first SVG selected
+        });
+
+        function loadBatch() {
+            const batchKeys = Object.keys(batches);
+            const batchKey = batchKeys[currentBatchIndex % batchKeys.length];
+            const batch = batches[batchKey];
+            
+            document.getElementById('currentPrompt').textContent = batch.prompt;
+            document.getElementById('batchName').textContent = titleCase(batchKey);
+            
+            // Shuffle for blinding
+            const shuffled = [...batch.svgs].sort(() => 0.5 - Math.random());
+            
+            const containers = document.querySelectorAll('.svg-container');
+            containers.forEach((container, index) => {
+                const svgData = shuffled[index];
+                container.dataset.outputId = svgData.id;
+                container.dataset.technique = svgData.technique;
+                container.querySelector('.svg-preview').innerHTML = svgData.svg;
+            });
+            
+            resetRankings();
+            updateDisplay();
+        }
+
+        function setupDragAndDrop() {
+            document.querySelectorAll('.svg-container').forEach(container => {
+                container.addEventListener('dragstart', (e) => {
+                    container.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', container.dataset.outputId);
+                });
+                
+                container.addEventListener('dragend', () => {
+                    container.classList.remove('dragging');
+                });
+                
+                container.addEventListener('click', () => {
+                    const index = parseInt(container.dataset.gridIndex);
+                    selectSVG(index);
+                });
+            });
+
+            document.querySelectorAll('.ranking-slot').forEach(slot => {
+                slot.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    slot.classList.add('drag-over');
+                });
+                
+                slot.addEventListener('dragleave', () => {
+                    slot.classList.remove('drag-over');
+                });
+                
+                slot.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    slot.classList.remove('drag-over');
+                    const outputId = e.dataTransfer.getData('text/plain');
+                    assignRanking(slot.dataset.rank, outputId);
+                });
+            });
+        }
+
+        function setupEventListeners() {
+            document.addEventListener('keydown', handleKeypress);
+            document.getElementById('submitBtn').addEventListener('click', submitRanking);
+            document.getElementById('analyticsBtn').addEventListener('click', toggleAnalytics);
+            document.getElementById('resetBtn').addEventListener('click', resetSession);
+        }
+
+        function handleKeypress(e) {
+            const key = e.key.toLowerCase();
+            
+            switch(key) {
+                case 'arrowleft':
+                    e.preventDefault();
+                    if (currentSelectedIndex === 0 || currentSelectedIndex === 2) {
+                        selectSVG(currentSelectedIndex + 1);
+                    } else {
+                        selectSVG(currentSelectedIndex - 1);
+                    }
+                    break;
+                case 'arrowright':
+                    e.preventDefault();
+                    if (currentSelectedIndex === 1 || currentSelectedIndex === 3) {
+                        selectSVG(currentSelectedIndex - 1);
+                    } else {
+                        selectSVG(currentSelectedIndex + 1);
+                    }
+                    break;
+                case 'arrowup':
+                    e.preventDefault();
+                    if (currentSelectedIndex >= 2) {
+                        selectSVG(currentSelectedIndex - 2);
+                    }
+                    break;
+                case 'arrowdown':
+                    e.preventDefault();
+                    if (currentSelectedIndex <= 1) {
+                        selectSVG(currentSelectedIndex + 2);
+                    }
+                    break;
+                case 'a':
+                    e.preventDefault();
+                    selectSVG(0);
+                    break;
+                case 'b':
+                    e.preventDefault();
+                    selectSVG(1);
+                    break;
+                case 'c':
+                    e.preventDefault();
+                    selectSVG(2);
+                    break;
+                case 'd':
+                    e.preventDefault();
+                    selectSVG(3);
+                    break;
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                    e.preventDefault();
+                    const selectedContainer = document.querySelector(`.svg-container[data-grid-index="${currentSelectedIndex}"]`);
+                    if (selectedContainer) {
+                        assignRanking(e.key, selectedContainer.dataset.outputId);
+                    }
+                    break;
+                case 'enter':
+                    e.preventDefault();
+                    submitRanking();
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    resetRankings();
+                    break;
+            }
+        }
+
+        function selectSVG(index) {
+            currentSelectedIndex = index;
+            document.querySelectorAll('.svg-container').forEach(c => c.classList.remove('selected'));
+            const selectedContainer = document.querySelector(`.svg-container[data-grid-index="${index}"]`);
+            if (selectedContainer) {
+                selectedContainer.classList.add('selected');
+                updateDisplay();
+            }
+        }
+
+        function assignRanking(rank, outputId) {
+            // Clear previous rankings for this output
+            Object.keys(rankings).forEach(key => {
+                if (rankings[key] === outputId) {
+                    delete rankings[key];
+                    clearSlot(key);
+                }
+            });
+            
+            // Clear the target slot
+            if (rankings[rank]) {
+                clearSlot(rank);
+            }
+            
+            rankings[rank] = outputId;
+            updateSlot(rank, outputId);
+            updateDisplay();
+        }
+
+        function updateSlot(rank, outputId) {
+            const slot = document.querySelector(`.ranking-slot[data-rank="${rank}"]`);
+            const container = document.querySelector(`.svg-container[data-output-id="${outputId}"]`);
+            
+            const svgClone = container.querySelector('svg').cloneNode(true);
+            slot.querySelector('.svg-preview').innerHTML = '';
+            slot.querySelector('.svg-preview').appendChild(svgClone);
+            
+            const technique = container.dataset.technique;
+            slot.querySelector('.technique-name').textContent = titleCase(technique.replace('-', ' '));
+            
+            slot.classList.remove('empty');
+            slot.classList.add('filled');
+        }
+
+        function clearSlot(rank) {
+            const slot = document.querySelector(`.ranking-slot[data-rank="${rank}"]`);
+            slot.querySelector('.svg-preview').innerHTML = '';
+            slot.querySelector('.technique-name').textContent = '';
+            slot.classList.add('empty');
+            slot.classList.remove('filled');
+        }
+
+        function resetRankings() {
+            rankings = {};
+            document.querySelectorAll('.ranking-slot').forEach(slot => {
+                clearSlot(slot.dataset.rank);
+            });
+            updateDisplay();
+        }
+
+        function submitRanking() {
+            if (Object.keys(rankings).length < 4) {
+                alert('Please rank all 4 SVGs before submitting.');
+                return;
+            }
+            
+            // Store evaluation data
+            sessionData.evaluations.push({
+                batchIndex: currentBatchIndex,
+                rankings: { ...rankings }
+            });
+            sessionData.totalEvaluations++;
+            
+            // Move to next batch
+            currentBatchIndex++;
+            loadBatch();
+            selectSVG(0);
+            
+            updateAnalytics();
+        }
+
+        function resetSession() {
+            if (confirm('Reset the entire session? All data will be lost.')) {
+                sessionData = { evaluations: [], totalEvaluations: 0, startTime: Date.now() };
+                currentBatchIndex = 0;
+                loadBatch();
+                selectSVG(0);
+                updateAnalytics();
+            }
+        }
+
+        function updateDisplay() {
+            document.getElementById('evalCount').textContent = sessionData.totalEvaluations;
+            const letters = ['a', 'b', 'c', 'd'];
+            document.getElementById('selectedIndicator').textContent = `SVG ${letters[currentSelectedIndex]}`;
+            
+            // Update submit button state
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = Object.keys(rankings).length < 4;
+        }
+
+        function updateAnalytics() {
+            document.getElementById('totalEvals').textContent = sessionData.totalEvaluations;
+            
+            if (sessionData.totalEvaluations > 0) {
+                // Calculate technique stats
+                const techStats = {};
+                sessionData.evaluations.forEach(eval => {
+                    Object.keys(eval.rankings).forEach(rank => {
+                        const outputId = eval.rankings[rank];
+                        const batchKeys = Object.keys(batches);
+                        const batchKey = batchKeys[eval.batchIndex % batchKeys.length];
+                        const svgData = batches[batchKey].svgs.find(s => s.id === outputId);
+                        
+                        if (svgData) {
+                            if (!techStats[svgData.technique]) {
+                                techStats[svgData.technique] = { wins: 0, total: 0 };
+                            }
+                            techStats[svgData.technique].total++;
+                            if (rank === '1') techStats[svgData.technique].wins++;
+                        }
+                    });
+                });
+                
+                // Update chart
+                const labels = [];
+                const data = [];
+                let topTech = 'N/A';
+                let maxRate = -1;
+                
+                Object.keys(techStats).forEach(tech => {
+                    const rate = (techStats[tech].wins / techStats[tech].total) * 100;
+                    labels.push(titleCase(tech.replace('-', ' ')));
+                    data.push(rate);
+                    
+                    if (rate > maxRate) {
+                        maxRate = rate;
+                        topTech = titleCase(tech.replace('-', ' '));
+                    }
+                    
+                    if (tech === 'baseline') {
+                        document.getElementById('baselineRate').textContent = Math.round(rate) + '%';
+                    }
+                });
+                
+                document.getElementById('topTech').textContent = topTech;
+                
+                if (winRateChart) {
+                    winRateChart.data.labels = labels;
+                    winRateChart.data.datasets[0].data = data;
+                    winRateChart.update();
+                }
+            }
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('winRateChart').getContext('2d');
+            winRateChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Win Rate (%)',
+                        data: [],
+                        backgroundColor: ['#3b82f6', '#8b5cf6', '#ef4444', '#10b981'],
+                        borderColor: ['#1d4ed8', '#7c3aed', '#dc2626', '#047857'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: { beginAtZero: true, max: 100 },
+                        y: { title: { display: true, text: 'Technique' } }
+                    }
+                }
+            });
+        }
+
+        function toggleAnalytics() {
+            const panel = document.getElementById('analyticsPanel');
+            panel.style.display = panel.style.display === 'none' || !panel.style.display ? 'block' : 'none';
+        }
+
+        function titleCase(str) {
+            return str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+        }
+    </script>
 </body>
 </html>

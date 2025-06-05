@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeLab - Minimal Clean</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+        
+        .prompt-box {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .prompt-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        
+        .prompt-text {
+            font-style: italic;
+            color: #6b7280;
+            font-size: 1.1rem;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            height: 600px;
+        }
+        
+        .svg-item {
+            background: white;
+            border-radius: 6px;
+            padding: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+            cursor: move;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .svg-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .svg-item.dragging {
+            opacity: 0.6;
+            transform: rotate(2deg);
+            z-index: 1000;
+        }
+        
+        .svg-item svg {
+            width: 100%;
+            height: 100%;
+            max-width: 350px;
+            max-height: 280px;
+            border-radius: 4px;
+        }
+        
+        .ranking-section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .ranking-title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #1e293b;
+            margin-bottom: 1rem;
+        }
+        
+        .ranking-instructions {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+        
+        .ranking-slots {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .ranking-slot {
+            min-height: 120px;
+            border: 3px dashed #cbd5e1;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f8fafc;
+            transition: all 0.3s ease;
+            position: relative;
+            padding: 1rem;
+        }
+        
+        .ranking-slot.rank-1 { border-color: #10b981; background: #f0fdf4; }
+        .ranking-slot.rank-2 { border-color: #f59e0b; background: #fffbeb; }
+        .ranking-slot.rank-3 { border-color: #ef4444; background: #fef2f2; }
+        .ranking-slot.rank-4 { border-color: #6b7280; background: #f9fafb; }
+        
+        .ranking-slot.drag-over {
+            border-style: solid;
+            transform: scale(1.02);
+        }
+        
+        .slot-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .slot-description {
+            font-size: 0.875rem;
+            color: #64748b;
+            text-align: center;
+        }
+        
+        .dropped-item {
+            background: rgba(59, 130, 246, 0.15);
+            border: 2px solid #3b82f6;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            font-size: 1rem;
+            color: #1e40af;
+            font-weight: 600;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+        
+        .btn-analytics {
+            background: #8b5cf6;
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary:hover { background: #e2e8f0; }
+        .btn-analytics:hover { background: #7c3aed; }
+        
+        .blind-notice {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .blind-notice-text {
+            color: #92400e;
+            font-weight: 500;
+        }
+        
+        .results-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .technique-reveal {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 6px;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .analytics-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            display: none;
+        }
+        
+        .analytics-title {
+            font-size: 1.3rem;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .stat-card {
+            background: #f8fafc;
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #1e293b;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+        
+        .progress-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 0.875rem;
+            min-width: 150px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 VibeLab</h1>
+            <p>Visual Prompt Engineering Evaluation</p>
+        </div>
+
+        <div class="blind-notice">
+            <div class="blind-notice-text">
+                🔒 Blinded Evaluation: Techniques revealed after ranking
+            </div>
+        </div>
+
+        <div class="prompt-box">
+            <div class="prompt-label">Evaluation Task:</div>
+            <div class="prompt-text">"Create an SVG drawing of a pelican riding a bicycle in a park with trees"</div>
+        </div>
+
+        <div class="comparison-grid">
+            <div class="svg-item" draggable="true" data-output="A" data-technique="baseline">
+                <svg viewBox="0 0 220 160">
+                    <rect width="220" height="30" y="130" fill="#4ade80"/>
+                    <circle cx="50" cy="120" r="8" fill="#000"/>
+                    <circle cx="80" cy="120" r="8" fill="#000"/>
+                    <rect width="30" height="2" x="50" y="118" fill="#666"/>
+                    <ellipse cx="60" cy="100" rx="8" ry="12" fill="#fbbf24"/>
+                    <circle cx="58" cy="95" r="3" fill="#fff"/>
+                    <polygon points="68,100 75,95 75,105" fill="#f97316"/>
+                    <rect width="8" height="20" x="56" y="80" fill="#0ea5e9"/>
+                    <circle cx="30" cy="40" r="15" fill="#22c55e"/>
+                    <rect width="4" height="15" x="28" y="25" fill="#78716c"/>
+                </svg>
+            </div>
+
+            <div class="svg-item" draggable="true" data-output="B" data-technique="few-shot">
+                <svg viewBox="0 0 220 160">
+                    <rect width="220" height="25" y="135" fill="#16a34a"/>
+                    <circle cx="40" cy="125" r="12" fill="none" stroke="#374151" stroke-width="2"/>
+                    <circle cx="100" cy="125" r="12" fill="none" stroke="#374151" stroke-width="2"/>
+                    <line x1="40" y1="125" x2="70" y2="105" stroke="#374151" stroke-width="2"/>
+                    <line x1="70" y1="105" x2="100" y2="125" stroke="#374151" stroke-width="2"/>
+                    <line x1="70" y1="105" x2="70" y2="95" stroke="#374151" stroke-width="2"/>
+                    <ellipse cx="70" cy="85" rx="12" ry="18" fill="#f8fafc"/>
+                    <ellipse cx="75" cy="75" rx="8" ry="10" fill="#f8fafc"/>
+                    <polygon points="83,75 95,72 95,78" fill="#f97316"/>
+                    <circle cx="78" cy="72" r="2" fill="#000"/>
+                    <ellipse cx="65" cy="80" rx="6" ry="10" fill="#e5e7eb"/>
+                    <circle cx="160" cy="50" r="20" fill="#22c55e"/>
+                    <rect width="6" height="25" x="157" y="70" fill="#78716c"/>
+                    <circle cx="190" cy="45" r="15" fill="#16a34a"/>
+                    <rect width="4" height="20" x="188" y="60" fill="#78716c"/>
+                </svg>
+            </div>
+
+            <div class="svg-item" draggable="true" data-output="C" data-technique="chain-of-thought">
+                <svg viewBox="0 0 220 160">
+                    <rect width="220" height="20" y="140" fill="#15803d"/>
+                    <rect width="220" height="5" y="135" fill="#22c55e"/>
+                    <ellipse cx="110" cy="145" rx="80" ry="8" fill="#a3a3a3"/>
+                    <circle cx="45" cy="120" r="15" fill="none" stroke="#1f2937" stroke-width="3"/>
+                    <circle cx="105" cy="120" r="15" fill="none" stroke="#1f2937" stroke-width="3"/>
+                    <line x1="35" y1="120" x2="55" y2="120" stroke="#6b7280" stroke-width="1"/>
+                    <line x1="45" y1="110" x2="45" y2="130" stroke="#6b7280" stroke-width="1"/>
+                    <line x1="95" y1="120" x2="115" y2="120" stroke="#6b7280" stroke-width="1"/>
+                    <line x1="105" y1="110" x2="105" y2="130" stroke="#6b7280" stroke-width="1"/>
+                    <line x1="45" y1="120" x2="75" y2="95" stroke="#1f2937" stroke-width="3"/>
+                    <line x1="75" y1="95" x2="105" y2="120" stroke="#1f2937" stroke-width="3"/>
+                    <line x1="75" y1="95" x2="75" y2="85" stroke="#1f2937" stroke-width="2"/>
+                    <ellipse cx="75" cy="85" rx="8" ry="3" fill="#000"/>
+                    <ellipse cx="75" cy="70" rx="15" ry="20" fill="#f1f5f9"/>
+                    <ellipse cx="80" cy="50" rx="5" ry="15" fill="#f1f5f9"/>
+                    <ellipse cx="85" cy="35" rx="8" ry="10" fill="#f1f5f9"/>
+                    <path d="M93,35 Q100,40 95,45 Q90,42 93,35" fill="#fbbf24"/>
+                    <polygon points="93,30 105,28 105,35 93,35" fill="#f97316"/>
+                    <circle cx="88" cy="32" r="2" fill="#000"/>
+                    <path d="M65,65 Q55,70 60,80 Q70,75 65,65" fill="#e5e7eb"/>
+                    <circle cx="160" cy="60" r="25" fill="#059669"/>
+                    <rect width="8" height="30" x="156" y="85" fill="#92400e"/>
+                    <circle cx="190" cy="55" r="20" fill="#16a34a"/>
+                    <rect width="6" height="25" x="187" y="75" fill="#92400e"/>
+                    <circle cx="25" cy="65" r="18" fill="#22c55e"/>
+                    <rect width="5" height="22" x="22.5" y="83" fill="#92400e"/>
+                    <circle cx="200" cy="25" r="12" fill="#fbbf24"/>
+                    <path d="M200,10 L200,5 M215,25 L220,25 M185,25 L180,25 M210,15 L213,12" stroke="#fbbf24" stroke-width="1"/>
+                </svg>
+            </div>
+
+            <div class="svg-item" draggable="true" data-output="D" data-technique="role-playing">
+                <svg viewBox="0 0 220 160">
+                    <defs>
+                        <linearGradient id="ground-minimal" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#22c55e"/>
+                            <stop offset="100%" style="stop-color:#15803d"/>
+                        </linearGradient>
+                        <radialGradient id="pelican-minimal" cx="50%" cy="50%">
+                            <stop offset="0%" style="stop-color:#ffffff"/>
+                            <stop offset="100%" style="stop-color:#f1f5f9"/>
+                        </radialGradient>
+                    </defs>
+                    <rect width="220" height="25" y="135" fill="url(#ground-minimal)"/>
+                    <circle cx="50" cy="115" r="18" fill="none" stroke="#374151" stroke-width="4"/>
+                    <circle cx="120" cy="115" r="18" fill="none" stroke="#374151" stroke-width="4"/>
+                    <g stroke="#6b7280" stroke-width="1.5">
+                        <line x1="40" y1="105" x2="60" y2="125"/>
+                        <line x1="60" y1="105" x2="40" y2="125"/>
+                        <line x1="110" y1="105" x2="130" y2="125"/>
+                        <line x1="130" y1="105" x2="110" y2="125"/>
+                    </g>
+                    <path d="M50,115 Q85,85 120,115" fill="none" stroke="#1f2937" stroke-width="4"/>
+                    <line x1="85" y1="90" x2="85" y2="75" stroke="#1f2937" stroke-width="3"/>
+                    <ellipse cx="85" cy="60" rx="18" ry="25" fill="url(#pelican-minimal)" stroke="#d1d5db" stroke-width="1"/>
+                    <ellipse cx="95" cy="40" rx="10" ry="12" fill="url(#pelican-minimal)" stroke="#d1d5db" stroke-width="1"/>
+                    <path d="M105,35 Q118,32 115,42 Q108,45 105,35" fill="#f59e0b"/>
+                    <circle cx="98" cy="37" r="3" fill="#1f2937"/>
+                    <circle cx="99" cy="36" r="1" fill="#fff"/>
+                    <path d="M75,55 Q65,60 70,70 Q80,65 75,55" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1"/>
+                    <g opacity="0.8">
+                        <circle cx="170" cy="70" r="30" fill="#059669"/>
+                        <circle cx="175" cy="65" r="20" fill="#16a34a"/>
+                        <rect width="10" height="35" x="165" y="100" fill="#78716c"/>
+                    </g>
+                    <g opacity="0.7">
+                        <polygon points="195,50 205,85 185,85" fill="#22c55e"/>
+                        <rect width="6" height="20" x="192" y="85" fill="#92400e"/>
+                    </g>
+                    <g opacity="0.6">
+                        <circle cx="35" cy="75" r="22" fill="#16a34a"/>
+                        <rect width="7" height="28" x="31.5" y="97" fill="#78716c"/>
+                    </g>
+                </svg>
+            </div>
+        </div>
+
+        <div class="ranking-section">
+            <h2 class="ranking-title">Rank the Outputs</h2>
+            <div class="ranking-instructions">
+                Drag the SVGs above into the ranking slots below based on overall quality
+            </div>
+            
+            <div class="ranking-slots">
+                <div class="ranking-slot rank-1" data-rank="1">
+                    <div class="slot-label">🥇 Best</div>
+                    <div class="slot-description">Highest quality, most complete</div>
+                </div>
+                <div class="ranking-slot rank-2" data-rank="2">
+                    <div class="slot-label">🥈 Good</div>
+                    <div class="slot-description">Solid performance</div>
+                </div>
+                <div class="ranking-slot rank-3" data-rank="3">
+                    <div class="slot-label">🥉 Fair</div>
+                    <div class="slot-description">Acceptable result</div>
+                </div>
+                <div class="ranking-slot rank-4" data-rank="4">
+                    <div class="slot-label">❌ Poor</div>
+                    <div class="slot-description">Significant issues</div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-secondary" onclick="resetRanking()">🔄 Reset</button>
+                <button class="btn btn-primary" onclick="submitRanking()">✅ Submit & Reveal</button>
+                <button class="btn btn-analytics" onclick="toggleAnalytics()">📊 View Analytics</button>
+                <button class="btn btn-secondary" onclick="newBatch()">🎲 New Batch</button>
+            </div>
+        </div>
+
+        <div class="analytics-panel" id="analyticsPanel">
+            <div class="analytics-title">📈 Session Analytics</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">12</div>
+                    <div class="stat-label">Total Evaluations</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">67%</div>
+                    <div class="stat-label">Chain-of-Thought Win Rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">4.2s</div>
+                    <div class="stat-label">Avg Evaluation Time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">23%</div>
+                    <div class="stat-label">Baseline Success Rate</div>
+                </div>
+            </div>
+            <p style="text-align: center; color: #64748b; font-size: 0.9rem;">
+                <strong>Insight:</strong> Chain-of-thought prompting shows consistent improvement in structural accuracy and completeness.
+            </p>
+        </div>
+    </div>
+
+    <div class="progress-indicator">
+        <strong>Session Progress</strong><br>
+        Evaluated: <span id="evaluated">12</span>/50<br>
+        Current: Pelican Bicycle<br>
+        <div style="margin-top: 0.5rem; padding: 0.5rem; background: #f0f9ff; border-radius: 4px; font-size: 0.8rem;">
+            <strong>Mode:</strong> Blinded
+        </div>
+    </div>
+
+    <!-- Results Modal -->
+    <div class="results-modal" id="resultsModal">
+        <div class="modal-content">
+            <h2>🎭 Technique Reveal</h2>
+            <div id="techniqueReveal"></div>
+            <div style="text-align: center; margin-top: 2rem;">
+                <button class="btn btn-primary" onclick="closeModal()">Continue Testing</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rankings = {};
+        let evaluationCount = 12;
+        
+        const techniqueNames = {
+            'baseline': 'Baseline - Direct prompt only',
+            'few-shot': 'Few-Shot - Provided with 3 example SVGs',
+            'chain-of-thought': 'Chain-of-Thought - "Let\'s break this down step by step..."',
+            'role-playing': 'Role-Playing - "You are a professional SVG artist..."'
+        };
+
+        // Drag and drop functionality
+        document.querySelectorAll('.svg-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                item.classList.add('dragging');
+                e.dataTransfer.setData('text/plain', item.dataset.output);
+            });
+
+            item.addEventListener('dragend', () => {
+                item.classList.remove('dragging');
+            });
+        });
+
+        document.querySelectorAll('.ranking-slot').forEach(slot => {
+            slot.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                slot.classList.add('drag-over');
+            });
+
+            slot.addEventListener('dragleave', () => {
+                slot.classList.remove('drag-over');
+            });
+
+            slot.addEventListener('drop', (e) => {
+                e.preventDefault();
+                slot.classList.remove('drag-over');
+                
+                const outputId = e.dataTransfer.getData('text/plain');
+                const rank = slot.dataset.rank;
+                
+                // Clear previous rankings for this output
+                Object.keys(rankings).forEach(key => {
+                    if (rankings[key] === outputId) {
+                        delete rankings[key];
+                        document.querySelectorAll('.dropped-item').forEach(item => {
+                            if (item.textContent.includes(outputId)) {
+                                item.remove();
+                            }
+                        });
+                    }
+                });
+                
+                // Clear current slot
+                slot.querySelectorAll('.dropped-item').forEach(item => item.remove());
+                
+                // Add new ranking
+                rankings[rank] = outputId;
+                
+                const droppedItem = document.createElement('div');
+                droppedItem.className = 'dropped-item';
+                droppedItem.textContent = `SVG ${outputId}`;
+                slot.appendChild(droppedItem);
+            });
+        });
+
+        function resetRanking() {
+            rankings = {};
+            document.querySelectorAll('.dropped-item').forEach(item => item.remove());
+        }
+
+        function submitRanking() {
+            if (Object.keys(rankings).length < 4) {
+                alert('Please rank all SVGs before submitting.');
+                return;
+            }
+            showTechniqueReveal();
+        }
+
+        function showTechniqueReveal() {
+            const revealDiv = document.getElementById('techniqueReveal');
+            revealDiv.innerHTML = '';
+            
+            for (let rank = 1; rank <= 4; rank++) {
+                if (rankings[rank]) {
+                    const outputId = rankings[rank];
+                    const item = document.querySelector(`[data-output="${outputId}"]`);
+                    const technique = item.dataset.technique;
+                    
+                    const revealItem = document.createElement('div');
+                    revealItem.className = 'technique-reveal';
+                    revealItem.innerHTML = `
+                        <strong>Rank #${rank}: SVG ${outputId}</strong><br>
+                        <em>Technique: ${techniqueNames[technique]}</em>
+                    `;
+                    revealDiv.appendChild(revealItem);
+                }
+            }
+            document.getElementById('resultsModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('resultsModal').style.display = 'none';
+            resetRanking();
+            evaluationCount++;
+            document.getElementById('evaluated').textContent = evaluationCount;
+        }
+
+        function toggleAnalytics() {
+            const panel = document.getElementById('analyticsPanel');
+            panel.style.display = panel.style.display === 'none' || !panel.style.display ? 'block' : 'none';
+        }
+
+        function newBatch() {
+            if (confirm('Generate new SVGs for the same prompt? This will reset your current ranking.')) {
+                resetRanking();
+                alert('New batch would be generated here...');
+            }
+        }
+    </script>
+</body>
+</html>
