@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeLab - Experiment Configuration</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+        
+        .experiment-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 2px solid #cbd5e1;
+            font-size: 1rem;
+        }
+        
+        textarea {
+            min-height: 120px;
+            font-family: monospace;
+        }
+        
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        .technique-selection {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+        
+        .btn {
+            padding: 0.9rem 2rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.1rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 2px solid #cbd5e1;
+        }
+        
+        .technique-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .technique-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 2px solid #e2e8f0;
+            transition: all 0.2s;
+        }
+        
+        .technique-card:hover {
+            border-color: #93c5fd;
+            transform: translateY(-3px);
+        }
+        
+        .workspace-links {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .sidebar-nav {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .sidebar-nav h3 {
+            margin-bottom: 1rem;
+            color: #1e293b;
+            text-align: center;
+        }
+        
+        .nav-list {
+            list-style: none;
+        }
+        
+        .nav-list li {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .nav-list li:hover {
+            background: #e0f2fe;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar-nav">
+        <h3>Researcher Workspace</h3>
+        <ul class="nav-list">
+            <li>Experiment Config</li>
+            <li>Analytics Dashboard</li>
+            <li>Session Manager</li>
+            <li>Data Export</li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🧪 VibeLab Experiment Configuration</h1>
+            <p>Design and build prompt engineering experiments with custom workflows</p>
+        </div>
+
+        <div class="experiment-card">
+            <div class="section-title">Experiment Setup</div>
+            
+            <div class="grid-2col">
+                <div class="form-group">
+                    <label for="experimentName">Experiment Name</label>
+                    <input type="text" id="experimentName" placeholder="Prompt Engineering Study #5">
+                </div>
+                
+                <div class="form-group">
+                    <label for="techniqueType">Primary Technique</label>
+                    <select id="techniqueType">
+                        <option value="baseline">Baseline Prompt</option>
+                        <option value="fewshot">Few-Shot Examples</option>
+                        <option value="cot">Chain-of-Thought</option>
+                        <option value="roleplay">Role-Playing</option>
+                        <option value="hybrid">Hybrid Approach</option>
+                        <option value="custom">Custom Technique</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="experimentDescription">Research Question / Hypothesis</label>
+                <textarea id="experimentDescription" placeholder="Investigate how different role-playing system prompts affect SVG generation quality for complex scenes..."></textarea>
+            </div>
+        </div>
+
+        <div class="experiment-card">
+            <div class="section-title">Prompt Library</div>
+            
+            <div class="form-group">
+                <label for="taskPrompt">Task Prompt</label>
+                <textarea id="taskPrompt" placeholder="Create an SVG of a pelican riding a bicycle through a city scene with sunset lighting">Create an SVG visualization of: ${prompt}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Prompt Techniques</label>
+                <div class="technique-grid">
+                    <div class="technique-card">
+                        <h3>Baseline</h3>
+                        <p>Standard prompt without enhancements</p>
+                    </div>
+                    <div class="technique-card">
+                        <h3>Few-Shot</h3>
+                        <textarea class="technique-config" placeholder="Add 2-3 example SVG specifications..."></textarea>
+                    </div>
+                    <div class="technique-card">
+                        <h3>Chain-of-Thought</h3>
+                        <textarea class="technique-config" placeholder="Specify reasoning steps...">First plan the composition, then specify colors, then generate SVG code</textarea>
+                    </div>
+                    <div class="technique-card">
+                        <h3>Role-Playing</h3>
+                        <textarea class="technique-config" placeholder="Specify role...">You are an expert SVG designer with 20 years experience creating vector illustrations for scientific publications</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="experiment-card">
+            <div class="section-title">Batch Generation</div>
+            
+            <div class="grid-2col">
+                <div class="form-group">
+                    <label for="numPrompts">Number of Test Prompts</label>
+                    <input type="number" id="numPrompts" min="1" max="50" value="8">
+                </div>
+                
+                <div class="form-group">
+                    <label for="batchLabel">Batch Label</label>
+                    <input type="text" id="batchLabel" placeholder="Roleplaying Tests - Phase 2">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="templatePrompts">Prompt Templates (one per line):</label>
+                <textarea id="templatePrompts" placeholder="A futuristic cityscape with flying cars
+Animals in a natural habitat at sunset
+Detailed diagram of a cell structure...">Photorealistic landscape with mountains, river, forest, and sunset
+Modern cityscape at night with skyscrapers, bridges and lights
+Abstract geometric pattern with primary colors
+Interior design concept for a minimalist apartment
+Anatomical diagram of a human heart with labels
+Birds-eye view landscape showing seasonal changes
+Scientific visualization of DNA transcription process</textarea>
+            </div>
+        </div>
+
+        <div class="workspace-links">
+            <a href="index.html" class="btn btn-secondary">Back to Evaluation</a>
+            <a href="advanced-analytics.html" class="btn btn-secondary">Analytics Preview</a>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" id="saveExperiment">Save Experiment</button>
+            <button class="btn btn-primary" id="generateBatch">Generate Evaluation Batch</button>
+        </div>
+    </div>
+
+    <script>
+        // Implementation hooks for backend integration
+        document.getElementById('saveExperiment').addEventListener('click', function() {
+            alert('Experiment configuration saved to workspace');
+            // Would trigger API call to save state
+        });
+        
+        document.getElementById('generateBatch').addEventListener('click', function() {
+            if (confirm('Generate batch with current configurations?')) {
+                // Implementation would call API to generate evaluation batch
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>

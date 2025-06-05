@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeLab - Advanced Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8fafc;
+            color: #334155;
+            line-height: 1.6;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+        
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .chart-title {
+            font-size: 1.3rem;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #1e293b;
+            line-height: 1.2;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+        
+        .filters-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #374151;
+        }
+        
+        select, input {
+            padding: 0.5rem;
+            border-radius: 6px;
+            border: 2px solid #cbd5e1;
+            font-size: 0.9rem;
+        }
+        
+        .comparison-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .svg-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .svg-sample {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .svg-sample svg {
+            width: 100%;
+            height: 150px;
+            border-radius: 4px;
+        }
+        
+        .sample-info {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 2px solid #cbd5e1;
+        }
+        
+        .insight-card {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 2px solid #38bdf8;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .insight-title {
+            font-weight: 700;
+            color: #0c4a6e;
+            margin-bottom: 0.5rem;
+        }
+        
+        .workspace-nav {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-link {
+            padding: 0.5rem 1rem;
+            background: #f1f5f9;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #475569;
+            transition: all 0.2s;
+        }
+        
+        .nav-link:hover {
+            background: #e0f2fe;
+            color: #0c4a6e;
+        }
+        
+        .nav-link.active {
+            background: #3b82f6;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="workspace-nav">
+        <div class="nav-links">
+            <a href="experiment-config.html" class="nav-link">Experiment Config</a>
+            <a href="advanced-analytics.html" class="nav-link active">Analytics Dashboard</a>
+            <a href="researcher-tools.html" class="nav-link">Session Manager</a>
+            <a href="data-export.html" class="nav-link">Data Export</a>
+            <a href="index.html" class="nav-link">Evaluation Interface</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>📊 Advanced Analytics Dashboard</h1>
+            <p>Deep insights into prompt engineering technique effectiveness</p>
+        </div>
+
+        <div class="stats-overview">
+            <div class="stat-card">
+                <div class="stat-value" id="totalExperiments">12</div>
+                <div class="stat-label">Total Experiments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalEvaluations">384</div>
+                <div class="stat-label">Total Evaluations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="topTechnique">Role-Playing</div>
+                <div class="stat-label">Best Technique</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgConfidence">87%</div>
+                <div class="stat-label">Avg Confidence</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="significantResults">8/12</div>
+                <div class="stat-label">Significant Results</div>
+            </div>
+        </div>
+
+        <div class="filters-panel">
+            <h3 style="margin-bottom: 1rem;">Filter & Search</h3>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="experimentFilter">Experiment</label>
+                    <select id="experimentFilter">
+                        <option value="all">All Experiments</option>
+                        <option value="landscape">Landscape Studies</option>
+                        <option value="roleplay">Role-Playing Tests</option>
+                        <option value="hybrid">Hybrid Approaches</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="techniqueFilter">Technique</label>
+                    <select id="techniqueFilter">
+                        <option value="all">All Techniques</option>
+                        <option value="baseline">Baseline</option>
+                        <option value="fewshot">Few-Shot</option>
+                        <option value="cot">Chain-of-Thought</option>
+                        <option value="roleplay">Role-Playing</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="dateFrom">Date From</label>
+                    <input type="date" id="dateFrom" value="2024-05-01">
+                </div>
+                <div class="filter-group">
+                    <label for="dateTo">Date To</label>
+                    <input type="date" id="dateTo" value="2024-06-05">
+                </div>
+            </div>
+        </div>
+
+        <div class="insight-card">
+            <div class="insight-title">🔍 Key Insight</div>
+            <p>Role-playing prompts show 23% higher win rates for complex scene generation, with statistical significance (p < 0.05). Effect is strongest for prompts requiring spatial reasoning and multi-object coordination.</p>
+        </div>
+
+        <div class="analytics-grid">
+            <div class="chart-card">
+                <div class="chart-title">Technique Win Rate Comparison</div>
+                <div class="chart-container">
+                    <canvas id="winRateChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title">Performance Over Time</div>
+                <div class="chart-container">
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title">Prompt Category Breakdown</div>
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title">Statistical Significance</div>
+                <div class="chart-container">
+                    <canvas id="significanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="comparison-panel">
+            <h3 style="margin-bottom: 1rem;">Best vs Worst Examples</h3>
+            <div class="svg-comparison">
+                <div class="svg-sample">
+                    <svg viewBox="0 0 200 150">
+                        <rect width="200" height="150" fill="#87CEEB"/>
+                        <polygon points="0,150 50,50 100,150" fill="#A0522D"/>
+                        <circle cx="150" cy="40" r="20" fill="#FFD700"/>
+                        <rect y="100" width="200" height="50" fill="#228B22"/>
+                    </svg>
+                    <div class="sample-info">
+                        <strong>Best: Role-Playing</strong><br>
+                        Rank: 1st (95% confidence)<br>
+                        Prompt: "Landscape with sunset"
+                    </div>
+                </div>
+                
+                <div class="svg-sample">
+                    <svg viewBox="0 0 200 150">
+                        <rect width="200" height="150" fill="#B0E0E6"/>
+                        <polygon points="10,120 60,20 110,120" fill="#D2B48C"/>
+                        <ellipse cx="170" cy="20" rx="15" ry="10" fill="#FFDEAD"/>
+                        <rect y="110" width="200" height="40" fill="#90EE90"/>
+                    </svg>
+                    <div class="sample-info">
+                        <strong>Worst: Baseline</strong><br>
+                        Rank: 4th (78% confidence)<br>
+                        Prompt: "Landscape with sunset"
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-secondary" onclick="exportData()">Export Analysis</button>
+            <button class="btn btn-primary" onclick="generateReport()">Generate Report</button>
+            <button class="btn btn-secondary" onclick="window.location.href='index.html'">Back to Evaluation</button>
+        </div>
+    </div>
+
+    <script>
+        // Sample data for demonstration
+        const sampleData = {
+            techniques: ['Baseline', 'Few-Shot', 'Chain-of-Thought', 'Role-Playing'],
+            winRates: [45, 62, 71, 78],
+            colors: ['#ef4444', '#f59e0b', '#8b5cf6', '#10b981']
+        };
+
+        // Initialize charts
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            setupEventListeners();
+        });
+
+        function initializeCharts() {
+            // Win Rate Chart
+            const winCtx = document.getElementById('winRateChart').getContext('2d');
+            new Chart(winCtx, {
+                type: 'bar',
+                data: {
+                    labels: sampleData.techniques,
+                    datasets: [{
+                        label: 'Win Rate (%)',
+                        data: sampleData.winRates,
+                        backgroundColor: sampleData.colors,
+                        borderColor: sampleData.colors,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100 }
+                    }
+                }
+            });
+
+            // Timeline Chart
+            const timeCtx = document.getElementById('timelineChart').getContext('2d');
+            new Chart(timeCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                    datasets: [{
+                        label: 'Role-Playing',
+                        data: [65, 72, 75, 78],
+                        borderColor: '#10b981',
+                        backgroundColor: '#10b98120'
+                    }, {
+                        label: 'Chain-of-Thought',
+                        data: [58, 64, 68, 71],
+                        borderColor: '#8b5cf6',
+                        backgroundColor: '#8b5cf620'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Category Chart
+            const catCtx = document.getElementById('categoryChart').getContext('2d');
+            new Chart(catCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Landscapes', 'Urban Scenes', 'Abstract', 'Scientific'],
+                    datasets: [{
+                        data: [35, 28, 20, 17],
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            // Significance Chart
+            const sigCtx = document.getElementById('significanceChart').getContext('2d');
+            new Chart(sigCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'p-values',
+                        data: [
+                            {x: 1, y: 0.02}, {x: 2, y: 0.001}, 
+                            {x: 3, y: 0.08}, {x: 4, y: 0.003}
+                        ],
+                        backgroundColor: function(context) {
+                            return context.parsed.y < 0.05 ? '#10b981' : '#ef4444';
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { 
+                            title: { display: true, text: 'Technique' },
+                            ticks: {
+                                callback: function(value) {
+                                    return sampleData.techniques[value - 1] || '';
+                                }
+                            }
+                        },
+                        y: { 
+                            title: { display: true, text: 'p-value' },
+                            type: 'logarithmic'
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const tech = sampleData.techniques[context.parsed.x - 1];
+                                    const pval = context.parsed.y;
+                                    const sig = pval < 0.05 ? 'Significant' : 'Not Significant';
+                                    return `${tech}: p=${pval.toFixed(3)} (${sig})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function setupEventListeners() {
+            // Filter change handlers
+            document.getElementById('experimentFilter').addEventListener('change', updateCharts);
+            document.getElementById('techniqueFilter').addEventListener('change', updateCharts);
+            document.getElementById('dateFrom').addEventListener('change', updateCharts);
+            document.getElementById('dateTo').addEventListener('change', updateCharts);
+        }
+
+        function updateCharts() {
+            // Implementation would filter data and update charts
+            console.log('Updating charts with new filters...');
+        }
+
+        function exportData() {
+            alert('Exporting analysis data to CSV...');
+            // Implementation would generate CSV/JSON export
+        }
+
+        function generateReport() {
+            alert('Generating comprehensive analysis report...');
+            // Implementation would create formatted report
+        }
+    </script>
+</body>
+</html>
+EOF; sleep 2
