@@ -6,6 +6,39 @@
     <title>VibeLab - Complete Navigation</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+.workspace-nav {
+  background: white;
+  border-radius: 12px 12px 0 0;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  margin-bottom: 0;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.nav-link {
+  padding: 0.5rem 1rem;
+  background: #f1f5f9;
+  border-radius: 20px;
+  text-decoration: none;
+  color: #475569;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  background: #e0f2fe;
+  color: #0c4a6e;
+}
+
+.nav-link.active {
+  background: #3b82f6;
+  color: white;
+}
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         :root {
@@ -528,6 +561,15 @@
             </div>
         </div>
         
+<div class="workspace-nav">
+  <div class="nav-links">
+    <a href="index.html" class="nav-link">Evaluation</a>
+    <a href="experiment-config.html" class="nav-link">Config</a>
+    <a href="advanced-analytics.html" class="nav-link">Analytics</a>
+    <a href="researcher-tools.html" class="nav-link">Workflow</a>
+    <a href="data-export.html" class="nav-link">Data Export</a>
+  </div>
+</div>
         <div class="actions">
             <button class="btn btn-primary" id="submitBtn">
                 <span class="btn-icon">✅</span> Submit & Next Batch
